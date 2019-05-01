@@ -1,12 +1,10 @@
 from __future__ import absolute_import
 import numpy as np
-import tensorflow as tf
 import sys
 from data.song import Song
 import json
 import tensorflow
 from datetime import datetime
-import numpy
 import csv
 import os
 from sklearn.preprocessing import normalize
@@ -18,7 +16,6 @@ from keras.layers import Dropout
 from keras.layers import LSTM
 from keras.layers import Activation
 from keras.optimizers import Adam
-import json
 import glob
 import copy
 from numpy.random import choice

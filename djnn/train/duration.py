@@ -1,10 +1,7 @@
 from __future__ import absolute_import
 import numpy as np
-import tensorflow as tf
 import sys
 from data.song import Song
-import json
-import tensorflow
 from datetime import datetime
 import numpy
 import csv
