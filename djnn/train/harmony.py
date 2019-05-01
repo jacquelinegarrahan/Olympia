@@ -149,15 +149,10 @@ def saveModel(model, modelName):
 
 if __name__ == '__main__':
 	sequenceLen = 24
-	nNotes = 300
-	epochs = 400
+	epochs = 500
 	midiDir = 'test_midis'
 	modelName = 'allTest_harmony'
 	songs = getAllSongs(midiDir)
 	mapping = getMap(songs, modelName)
 	noteInputs, model = trainHarmonies(songs, mapping, sequenceLen, epochs)
 	saveModel(model, modelName)
-	#notes = generateNotes(model, noteInputs, sequenceLen, mapping, nNotes)
-	#print(notes)
-	#key = 'C'
-	#writeMidi(notes, key)

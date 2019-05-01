@@ -156,8 +156,7 @@ def loadModel(modelName):
 
 if __name__ == '__main__':
 	sequenceLen = 24
-	nNotes = 300
-	epochs = 250
+	epochs = 500
 	midiDir = 'test_midis'
 	modelName = 'allTest_duration'
 	songs = getAllSongs(midiDir)
