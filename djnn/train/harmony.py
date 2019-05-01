@@ -72,6 +72,16 @@ def prepareHarmonies(progression, mapping, sequenceLen):
 	return inputs, outputs
 
 
+def diversityCheck(harmonics, mapping):
+	#use the index of dispersion here as a filter
+	harmVec = [mapping[harm] for harm in harmonics]
+	iod = numpy.var(harmVec)/numpy.mean(harmVec)
+	if iod > 5:
+		return True
+	else:
+		return False
+
+
 def trainHarmonies(songs, mapping, sequenceLen, epochs):
 	progressions = []
 	preparedInputs = False
@@ -79,6 +89,7 @@ def trainHarmonies(songs, mapping, sequenceLen, epochs):
 	for song in songs:
 		rns = song.convertHarmonicToRomanNumerals()
 		if len(rns) > minLen:
+
 			progressions.append(rns)
 
 	model = lstm(sequenceLen, len(mapping))

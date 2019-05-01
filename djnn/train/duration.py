@@ -69,6 +69,17 @@ def prepareDurations(progression, mapping, sequenceLen):
 	return inputs, outputs
 
 
+
+def diversityCheck(duration):
+	#use the index of dispersion here as a filter
+	iod = numpy.var(duration)/numpy.mean(duration)
+	print(iod)
+	if iod > 1:
+		return True
+	else:
+		return False
+
+
 def trainDuration(songs, mapping, sequenceLen, epochs):
 	progressions = []
 	preparedInputs = False
@@ -76,8 +87,8 @@ def trainDuration(songs, mapping, sequenceLen, epochs):
 	for song in songs:
 		durations = song.getDurationProgression()
 		if len(durations) > minLen:
-			progressions.append(durations)
-			print(durations)
+			if diversityCheck(durations):
+				progressions.append(durations)
 	
 
 	model = lstm(sequenceLen, len(mapping))
