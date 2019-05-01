@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-import numpy as np
+import numpy
 import sys
 from data.song import Song
 import json
@@ -16,6 +16,7 @@ from keras.layers import Dropout
 from keras.layers import LSTM
 from keras.layers import Activation
 from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping
 import glob
 import copy
 from numpy.random import choice
@@ -23,7 +24,6 @@ from music21 import roman, stream, note
 from src.utils import get_project_root
 
 ROOT_DIR = get_project_root()
-print(ROOT_DIR)
 
 def getAllSongs(midiDir):
 	songs = []
@@ -92,7 +92,11 @@ def trainHarmonies(songs, mapping, sequenceLen, epochs):
 	model = lstm(sequenceLen, len(mapping))
 	for progression in progressions:
 		inputs, outputs = prepareHarmonies(progression, mapping, sequenceLen)
-		model.fit(inputs, outputs, epochs=epochs, batch_size=128)
+		n_train = int(0.9*len(inputs))
+		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=25)
+		trainX, trainy = inputs[:n_train], outputs[:n_train]
+		testX, testy = inputs[n_train:], outputs[n_train:]
+		model.fit(trainX, trainy, validation_data=(testX, testy), epochs=epochs, batch_size=128, callbacks=[es])
 		try:
 			preparedInputs = numpy.concatenate((preparedInputs, inputs))
 		except:

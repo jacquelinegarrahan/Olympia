@@ -90,7 +90,7 @@ def trainDuration(songs, mapping, sequenceLen, epochs):
 	for progression in progressions:
 		inputs, outputs = prepareDurations(progression, mapping, sequenceLen)
 		n_train = int(0.9*len(inputs))
-		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=50)
+		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=25)
 		trainX, trainy = inputs[:n_train], outputs[:n_train]
 		testX, testy = inputs[n_train:], outputs[n_train:]
 		model.fit(trainX, trainy, validation_data=(testX, testy), epochs=epochs, batch_size=128, callbacks=[es])
