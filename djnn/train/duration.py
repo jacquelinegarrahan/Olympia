@@ -91,11 +91,14 @@ def train_duration(songs, mapping, sequence_len, epochs):
 		inputs, outputs = prepare_durations(progression, mapping, sequence_len)
 		n_train = int(0.9*len(inputs))
 		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=50)
+
 		model.fit(inputs, outputs, validation_split=0.8, epochs=epochs, batch_size=128, callbacks=[es])
 		try:
 			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
 		except:
 			prepared_inputs = inputs
+		print('Not terminating early...')
+
 
 	return prepared_inputs, model
 	
@@ -116,8 +119,8 @@ def lstm(sequence_len, n_notes):
 	model.add(Dropout(0.3))
 	model.add(Dense(n_notes))
 	model.add(Activation('softmax'))
-	optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
-	#optimizer = "rmsprop"
+	#optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+	optimizer = "rmsprop"
 	model.compile(loss='categorical_crossentropy', optimizer=optimizer )
 	return model
 
