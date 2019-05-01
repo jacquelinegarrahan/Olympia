@@ -155,7 +155,7 @@ def load_model(model_name):
 
 if __name__ == '__main__':
 	sequence_len = 24
-	epochs = 500
+	epochs = 50
 	midi_dir = 'test_midis'
 	model_name = 'allTest_duration'
 	songs = get_all_songs(midi_dir)
