@@ -24,41 +24,41 @@ from src.utils import get_project_root
 
 ROOT_DIR = get_project_root()
 
-def getAllSongs(midiDir):
+def get_all_songs(midi_dir):
 	songs = []
-	for file in glob.glob(ROOT_DIR + '/midis/' + midiDir + "/*.mid"):
+	for file in glob.glob(ROOT_DIR + '/midis/' + midi_dir + "/*.mid"):
 		song = Song(file)
 		songs.append(song)
 	return songs
 
 
-def getMap(songs, modelName):
+def get_map(songs, model_name):
 	durations = []
 	for song in songs:
-		prog = song.getDurationProgression()
+		prog = song.get_duration_progression()
 		for item in prog:
 			if item not in durations:
 				durations.append(item)
 	mapping =  dict((item, number) for number, item in enumerate(durations))
-	with open(ROOT_DIR + '/files/mappings/'+ modelName + '_durations.json', 'w') as f:
+	with open(ROOT_DIR + '/files/mappings/'+ model_name + '_durations.json', 'w') as f:
 		f.write(json.dumps(mapping))
 	return mapping
 
 
-def prepareDurations(progression, mapping, sequenceLen):
+def prepare_durations(progression, mapping, sequence_len):
 	inputs = []
 	outputs = []
 
-	for i in range(0, len(progression) - sequenceLen, 1):
-		progIn = progression[i:i + sequenceLen]
-		progOut = progression[i + sequenceLen]
-		inputs.append([mapping[item] for item in progIn])
-		outputs.append(mapping[progOut])
+	for i in range(0, len(progression) - sequence_len, 1):
+		prog_in = progression[i:i + sequence_len]
+		prog_out = progression[i + sequence_len]
+		inputs.append([mapping[item] for item in prog_in])
+		outputs.append(mapping[prog_out])
 	
-	nSequences = len(inputs)
+	n_sequences = len(inputs)
 
 	inputs = np_utils.to_categorical(inputs, num_classes=len(mapping))
-	inputs = numpy.reshape(inputs, (nSequences, sequenceLen, len(mapping)))
+	inputs = numpy.reshape(inputs, (n_sequences, sequence_len, len(mapping)))
 	outputs = np_utils.to_categorical(outputs, num_classes =len(mapping))
 	inputs = inputs / len(mapping)
 
@@ -66,7 +66,7 @@ def prepareDurations(progression, mapping, sequenceLen):
 
 
 
-def diversityCheck(duration):
+def diversity_check(duration):
 	#use the index of dispersion here as a filter
 	iod = numpy.var(duration)/numpy.mean(duration)
 	if iod > 1:
@@ -75,39 +75,36 @@ def diversityCheck(duration):
 		return False
 
 
-def trainDuration(songs, mapping, sequenceLen, epochs):
+def train_duration(songs, mapping, sequence_len, epochs):
 	progressions = []
-	preparedInputs = False
-	minLen = 2 * sequenceLen
+	prepared_inputs = False
+	minLen = 2 * sequence_len
 	for song in songs:
-		durations = song.getDurationProgression()
+		durations = song.get_duration_progression()
 		if len(durations) > minLen:
-			if diversityCheck(durations):
+			if diversity_check(durations):
 				progressions.append(durations)
 	
 
-	model = lstm(sequenceLen, len(mapping))
+	model = lstm(sequence_len, len(mapping))
 	for progression in progressions:
-		inputs, outputs = prepareDurations(progression, mapping, sequenceLen)
+		inputs, outputs = prepare_durations(progression, mapping, sequence_len)
 		n_train = int(0.9*len(inputs))
-		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=25)
-		trainX, trainy = inputs[:n_train], outputs[:n_train]
-		testX, testy = inputs[n_train:], outputs[n_train:]
-		model.fit(trainX, trainy, validation_data=(testX, testy), epochs=epochs, batch_size=128, callbacks=[es])
+		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=50)
+		model.fit(inputs, outputs, validation_split=0.8, epochs=epochs, batch_size=128, callbacks=[es])
 		try:
-			preparedInputs = numpy.concatenate((preparedInputs, inputs))
+			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
 		except:
-			preparedInputs = inputs
-	#	preparedInputs.append(inputs)
+			prepared_inputs = inputs
 
-	return preparedInputs, model
+	return prepared_inputs, model
 	
 
-def lstm(sequenceLen, nNotes):
+def lstm(sequence_len, n_notes):
 	model = Sequential()
 	model.add(LSTM(
 			256,
-			input_shape=(sequenceLen, nNotes),
+			input_shape=(sequence_len, n_notes),
 			return_sequences=True
 		))
 	model.add(Dropout(0.3))
@@ -117,29 +114,29 @@ def lstm(sequenceLen, nNotes):
 	model.add(LSTM(256))
 	model.add(Dense(256))
 	model.add(Dropout(0.3))
-	model.add(Dense(nNotes))
+	model.add(Dense(n_notes))
 	model.add(Activation('softmax'))
 	optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 	#optimizer = "rmsprop"
-	model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+	model.compile(loss='categorical_crossentropy', optimizer=optimizer )
 	return model
 
 
 
-def saveModel(model, modelName):
-	modelFile = ROOT_DIR + '/files/models/duration/model_' + modelName + '.json'
-	weightFile = ROOT_DIR + '/files/models/duration/weights_' + modelName + '.h5'
+def save_model(model, model_name):
+	model_file = ROOT_DIR + '/files/models/duration/model_' + model_name + '.json'
+	weight_file = ROOT_DIR + '/files/models/duration/weights_' + model_name + '.h5'
 
 	# serialize model to JSON
 	model_json = model.to_json()
-	with open(modelFile, "w") as json_file:
+	with open(model_file, "w") as json_file:
 		json_file.write(model_json)
 	# serialize weights to HDF5
-	model.save_weights(weightFile)
+	model.save_weights(weight_file)
 
-def loadModel(modelName):
-	modelFile = ROOT_DIR + '/files/models/duration/model_' + modelName + '.json'
-	weightFile = ROOT_DIR + '/files/models/duration/weights_' + modelName + '.h5'
+def load_model(model_name):
+	model_file = ROOT_DIR + '/files/models/duration/model_' + model_name + '.json'
+	weight_file = ROOT_DIR + '/files/models/duration/weights_' + model_name + '.h5'
 
 	# load json and create model
 	json_file = open(modelFile, 'r')
@@ -148,17 +145,17 @@ def loadModel(modelName):
 	loaded_model = model_from_json(loaded_model_json)
 
 	# load weights into new model
-	loaded_model.load_weights(weightFile)
+	loaded_model.load_weights(weight_file)
 
 	return loaded_model
 
 
 if __name__ == '__main__':
-	sequenceLen = 24
+	sequence_len = 24
 	epochs = 500
-	midiDir = 'test_midis'
-	modelName = 'allTest_duration'
-	songs = getAllSongs(midiDir)
-	mapping = getMap(songs, modelName)
-	noteInputs, model = trainDuration(songs, mapping, sequenceLen, epochs)
-	saveModel(model, modelName)
+	midi_dir = 'midis_by_genre/90s'
+	model_name = 'allTest_duration'
+	songs = get_all_songs(midi_dir)
+	mapping = get_map(songs, model_name)
+	note_inputs, model = train_duration(songs, mapping, sequence_len, epochs)
+	save_model(model, model_name)

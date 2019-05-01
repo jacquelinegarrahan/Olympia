@@ -4,21 +4,21 @@ import matplotlib.lines as mlines
 
 class Song():
 
-	def __init__(self, rawPath, title=None, artist=None):
+	def __init__(self, raw_path, title=None, artist=None):
 		self.title = title
 		self.artist = artist
-		self.rawPath = rawPath
+		self.raw_path = raw_path
 		self.instruments = None
-		self.expectedKey = None
-		self.timeSignature = None
+		self.expected_key = None
+		self.time_signature = None
 		self.harmonic = None
-		self.romanNumerals = None
-		self.durationProgression = None
-		self.loadMidi()
+		self.roman_numerals = None
+		self.duration_progression = None
+		self.load_midi()
 
-	def loadMidi(self, remove_drums=True):
+	def load_midi(self, remove_drums=True):
 		mf = midi.MidiFile()
-		mf.open(self.rawPath)
+		mf.open(self.raw_path)
 		mf.read()
 		mf.close()
 		if (remove_drums):
@@ -26,17 +26,17 @@ class Song():
 				mf.tracks[i].events = [ev for ev in mf.tracks[i].events if ev.channel != 10]
 
 		self.midi = midi.translate.midiFileToStream(mf)
-		self.getInstruments()
-		self.getExpectedKey()
-		self.getTimeSignatures()
-		self.getHarmonicReduction()
-		self.convertHarmonicToRomanNumerals()
-		self.getDurationProgression()
+		self.get_instruments()
+		self.get_expected_key()
+		self.get_time_signatures()
+		self.get_harmonic_reduction()
+		self.convert_harmonic_to_roman_numerals()
+		self.get_duration_progression()
 
-	def getInstruments(self):
+	def get_instruments(self):
 		instruments = []
-		partStream = self.midi.parts.stream()
-		for p in partStream:
+		part_stream = self.midi.parts.stream()
+		for p in part_stream:
 			aux = p
 			instruments.append(p.partName)
 
@@ -44,9 +44,9 @@ class Song():
 		return instruments
 		
 	def getPartByInstrument(self, instrument):
-		partStream = self.midi.parts.stream()
+		part_stream = self.midi.parts.stream()
 		print("List of instruments found on MIDI file:")
-		for p in partStream:
+		for p in part_stream:
 			if p.partName == instrument:
 				return p
 	
@@ -64,66 +64,66 @@ class Song():
 		
 		return ret, parent_element
 
-	def getExpectedKey(self):
-		self.expectedKey = self.midi.analyze('key')
-		return self.expectedKey
+	def get_expected_key(self):
+		self.expected_key = self.midi.analyze('key')
+		return self.expected_key
 
-	def getTimeSignatures(self):
-		timeSignature = self.midi.getTimeSignatures()[0]
-		self.timeSignature = '{}/{}'.format(timeSignature.beatCount, timeSignature.denominator)
-		return self.timeSignature
+	def get_time_signatures(self):
+		time_signature = self.midi.getTimeSignatures()[0]
+		self.time_signature = '{}/{}'.format(time_signature.beatCount, time_signature.denominator)
+		return self.time_signature
 
-	def getHarmonicReduction(self):
+	def get_harmonic_reduction(self):
 		ret =[]
 		try:
-			tempMidi = stream.Score()
-			tempMidiChords = self.midi.chordify()
-			tempMidi.insert(0, tempMidiChords)
-			maxNotesPerChord = 4 
-			for measure in tempMidiChords.measures(0, None): # None = get all measures.
+			temp_midi = stream.Score()
+			temp_midi_chords = self.midi.chordify()
+			temp_midi.insert(0, temp_midi_chords)
+			max_notes_per_chord = 4 
+			for measure in temp_midi_chords.measures(0, None): # None = get all measures.
 				if (type(measure) != stream.Measure):
 					continue
 					
 				# count all notes length in each measure,
 				# get the most frequent ones and try to create a chord with them.
-				countDict = dict()
-				bassNote = noteCount(measure, countDict)
-				if (len(countDict) < 1):
+				count_dict = dict()
+				bass_note = note_count(measure, count_dict)
+				if (len(count_dict) < 1):
 					ret.append("-") # Empty measure
 					continue
 					
-				sortedItems = sorted(countDict.items(), key=lambda x:x[1])
-				sortedNotes = [item[0] for item in sortedItems[-maxNotesPerChord:]]
-				measureChord = chord.Chord(sortedNotes)
+				sorted_items = sorted(count_dict.items(), key=lambda x:x[1])
+				sorted_notes = [item[0] for item in sorted_items[-max_notes_per_chord:]]
+				measure_chord = chord.Chord(sorted_notes)
 					
-				ret.append(measureChord)
+				ret.append(measure_chord)
 
 			self.harmonic = ret
 		except:
-			print('CHORDIFY ERROR! {}'.format(self.rawPath))
+			print('CHORDIFY ERROR! {}'.format(self.raw_path))
 			self.harmonic = []
 		return ret
 	
-	def convertHarmonicToRomanNumerals(self):
+	def convert_harmonic_to_roman_numerals(self):
 		ret = []
 		for c in self.harmonic:
 			if c == '-':
 				ret.append('-')
 			else:
-				romanNumeral = roman.romanNumeralFromChord(c, self.expectedKey)
-				ret.append(simplifyRomanName(romanNumeral))
-		self.romanNumerals = ret
+				roman_numeral = roman.romanNumeralFromChord(c, self.expected_key)
+				ret.append(simplify_roman_name(roman_numeral))
+		self.roman_numerals = ret
 		return ret
 
-	def getDurationProgression(self):
+	def get_duration_progression(self):
 		durations = []
 		parts = []
-		allowedDurations = ['Acoustic Bass', 'Guitar', 'Fretless Bass', 'Harmonica', 'Piano', 'Saxophone', 'Baritone Saxophone',\
+		allowed_durations = ['Acoustic Bass', 'Guitar', 'Fretless Bass', 'Harmonica', 'Piano', 'Saxophone', 'Baritone Saxophone',\
 			 'Tenor Saxophone', 'Harpischord', 'Electric Bass', 'Organ', 'Electric Guitar', 'Electric Organ', 'Violin', 'Timpani',\
 				 'StringInstrument', 'Clarinet', 'Brass', 'Marimba', 'Clavichord']
 
 		for part in self.midi.parts:
-			if part.partName in allowedDurations:
+			if part.partName in allowed_durations:
 				parts.append(part)
 
 		for i in range(len(parts)):
@@ -134,16 +134,17 @@ class Song():
 					durations.append(float(nt.duration.quarterLength))
 				except:
 					pass
-		self.durationProgression = durations
+
+		self.duration_progression = durations
 		return durations
 
-	def plotOffsetVsPitch(self):
+	def plot_offset_vs_pitch(self):
 		self.midi.plot('scatter', 'offset', 'pitchClass')
 	
-	def plotPitchClass(self):
+	def plot_pitch_class(self):
 		self.midi.plot('histogram', 'pitchClass', 'count')
 
-	def plotParts(self):
+	def plot_parts(self):
 		fig = plt.figure(figsize=(12, 5))
 		ax = fig.add_subplot(1, 1, 1)
 		minPitch = pitch.Pitch('C10').ps
@@ -179,7 +180,7 @@ class Song():
 		plt.show()
 	
 
-def noteCount(measure, count_dict):
+def note_count(measure, count_dict):
     bass_note = None
     for chord in measure.recurse().getElementsByClass('Chord'):
         # All notes have the same length of its chord parent.
@@ -198,7 +199,7 @@ def noteCount(measure, count_dict):
         
     return bass_note
                 
-def simplifyRomanName(roman_numeral):
+def simplify_roman_name(roman_numeral):
     # Chords can get nasty names as "bII#86#6#5",
     # in this method we try to simplify names, even if it ends in
     # a different chord to reduce the chord vocabulary and display
@@ -227,6 +228,6 @@ def simplifyRomanName(roman_numeral):
 if __name__ == '__main__':
 	filepath = 'test_midis/coldplay-clocks_version_2.mid'
 	song = Song(filepath, 'Clocks', 'Coldplay')
-	print(song.convertHarmonicToRomanNumerals())
-	song.plotParts()
+	print(song.convert_harmonic_to_roman_numerals())
+	song.plot_parts()
 	#timeSignature.beatCount, timeSignature.denominator

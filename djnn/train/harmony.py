@@ -25,92 +25,89 @@ from src.utils import get_project_root
 
 ROOT_DIR = get_project_root()
 
-def getAllSongs(midiDir):
+def get_all_songs(midi_dir):
 	songs = []
-	for file in glob.glob(ROOT_DIR + '/midis/' + midiDir + "/*.mid"):
+	for file in glob.glob(ROOT_DIR + '/midis/' + midi_dir + "/*.mid"):
 		song = Song(file)
 		songs.append(song)
 	return songs
 
 
-def getMap(songs, modelName):
+def get_map(songs, model_name):
 	notes = []
 	for song in songs:
-		rns = song.convertHarmonicToRomanNumerals()
+		rns = song.convert_harmonic_to_roman_numerals()
 		for item in rns:
 			if item not in notes:
 				notes.append(item)
 	mapping =  dict((item, number) for number, item in enumerate(notes))
-	with open(ROOT_DIR + '/files/mappings/'+ modelName + '_harmony.json', 'w') as f:
+	with open(ROOT_DIR + '/files/mappings/'+ model_name + '_harmony.json', 'w') as f:
 		f.write(json.dumps(mapping))
 	return mapping
 
 
 
-def prepareHarmonies(progression, mapping, sequenceLen):
+def prepare_harmonies(progression, mapping, sequence_len):
 	inputs = []
 	outputs = []
 
-	for i in range(0, len(progression) - sequenceLen, 1):
-		progIn = progression[i:i + sequenceLen]
-		progOut = progression[i + sequenceLen]
-		inputs.append([mapping[item] for item in progIn])
-		outputs.append(mapping[progOut])
-	#print(inputs)
+	for i in range(0, len(progression) - sequence_len, 1):
+		prog_in = progression[i:i + sequence_len]
+		prog_out = progression[i + sequence_len]
+		inputs.append([mapping[item] for item in prog_in])
+		outputs.append(mapping[prog_out])
 	
-	nSequences = len(inputs)
-	#inputs = np_utils.to_categorical(inputs, num_classes=len(mapping))
-	
+	n_sequences = len(inputs)
 	inputs = np_utils.to_categorical(inputs, num_classes=len(mapping))
-	inputs = numpy.reshape(inputs, (nSequences, sequenceLen, len(mapping)))
+	inputs = numpy.reshape(inputs, (n_sequences, sequence_len, len(mapping)))
 	outputs = np_utils.to_categorical(outputs, num_classes =len(mapping))
 	inputs = inputs / len(mapping)
 
 	return inputs, outputs
 
 
-def diversityCheck(harmonics, mapping):
+def diversity_check(harmonics, mapping):
 	#use the index of dispersion here as a filter
-	harmVec = [mapping[harm] for harm in harmonics]
-	iod = numpy.var(harmVec)/numpy.mean(harmVec)
+	harm_vec = [mapping[harm] for harm in harmonics]
+	iod = numpy.var(harm_vec)/numpy.mean(harm_vec)
 	if iod > 5:
 		return True
 	else:
 		return False
 
 
-def trainHarmonies(songs, mapping, sequenceLen, epochs):
+def train_harmonies(songs, mapping, sequence_len, epochs):
 	progressions = []
-	preparedInputs = False
-	minLen = 2 * sequenceLen
+	prepared_inputs = False
+	minLen = 2 * sequence_len
 	for song in songs:
-		rns = song.convertHarmonicToRomanNumerals()
+		rns = song.convert_harmonic_to_roman_numerals()
 		if len(rns) > minLen:
 
 			progressions.append(rns)
 
-	model = lstm(sequenceLen, len(mapping))
+	model = lstm(sequence_len, len(mapping))
 	for progression in progressions:
-		inputs, outputs = prepareHarmonies(progression, mapping, sequenceLen)
+		inputs, outputs = prepare_harmonies(progression, mapping, sequence_len)
 		n_train = int(0.9*len(inputs))
-		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=25)
+		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=10)
 		trainX, trainy = inputs[:n_train], outputs[:n_train]
 		testX, testy = inputs[n_train:], outputs[n_train:]
-		model.fit(trainX, trainy, validation_data=(testX, testy), epochs=epochs, batch_size=128, callbacks=[es])
+		model.fit(trainX, trainy, validation_data=(testX, testy), epochs=epochs, batch_size=128, callbacks=[es], monitor=['loss', 'val_loss'])
 		try:
-			preparedInputs = numpy.concatenate((preparedInputs, inputs))
+			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
 		except:
-			preparedInputs = inputs
+			prepared_inputs = inputs
 	#	preparedInputs.append(inputs)
 
-	return preparedInputs, model
+	return prepared_inputs, model
 	
 
-def lstm(sequenceLen, nNotes):
+def lstm(sequence_len, n_notes):
 	model = Sequential()
 	model.add(LSTM(
 			256,
-			input_shape=(sequenceLen, nNotes),
+			input_shape=(sequence_len, n_notes),
 			return_sequences=True
 		))
 	model.add(Dropout(0.1))
@@ -119,7 +116,7 @@ def lstm(sequenceLen, nNotes):
 	model.add(LSTM(256))
 	model.add(Dense(256))
 	model.add(Dropout(0.1))
-	model.add(Dense(nNotes))
+	model.add(Dense(n_notes))
 	model.add(Activation('softmax'))
 	#optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 	optimizer = "rmsprop"
@@ -127,33 +124,33 @@ def lstm(sequenceLen, nNotes):
 	return model
 
 
-def convertNotes(inputs, noteMap):
+def convert_notes(inputs, note_map):
 	notes = []
 	for input in inputs:
 		idx = numpy.argmax(input)
-		result = list(noteMap.keys())[list(noteMap.values()).index(idx)]
+		result = list(note_map.keys())[list(note_map.values()).index(idx)]
 		notes.append(result)
 	return notes
 
 
-def saveModel(model, modelName):
-	modelFile = ROOT_DIR + '/files/models/harmony/model_' + modelName + '.json'
-	weightFile = ROOT_DIR + '/files/models/harmony/weights_' + modelName + '.h5'
+def save_model(model, model_name):
+	model_file = ROOT_DIR + '/files/models/harmony/model_' + model_name + '.json'
+	weight_file = ROOT_DIR + '/files/models/harmony/weights_' + model_name + '.h5'
 
 	# serialize model to JSON
 	model_json = model.to_json()
-	with open(modelFile, "w") as json_file:
+	with open(model_file, "w") as json_file:
 		json_file.write(model_json)
 	# serialize weights to HDF5
-	model.save_weights(weightFile)
+	model.save_weights(weight_file)
 
 
 if __name__ == '__main__':
-	sequenceLen = 24
+	sequence_len = 24
 	epochs = 500
-	midiDir = 'test_midis'
-	modelName = 'allTest_harmony'
-	songs = getAllSongs(midiDir)
-	mapping = getMap(songs, modelName)
-	noteInputs, model = trainHarmonies(songs, mapping, sequenceLen, epochs)
-	saveModel(model, modelName)
+	midi_dir = 'test_midis'
+	model_name = 'allTest_harmony'
+	songs = get_all_songs(midi_dir)
+	mapping = get_map(songs, modelName)
+	noteInputs, model = train_harmonies(songs, mapping, sequence_len, epochs)
+	save_model(model, model_name)
