@@ -90,9 +90,9 @@ def train_duration(songs, mapping, sequence_len, epochs):
 	for progression in progressions:
 		inputs, outputs = prepare_durations(progression, mapping, sequence_len)
 		n_train = int(0.9*len(inputs))
-		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=50)
+		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=25)
 
-		model.fit(inputs, outputs, validation_split=0.8, epochs=epochs, batch_size=128, callbacks=[es])
+		model.fit(inputs, outputs, epochs=epochs, batch_size=128, callbacks=[es])
 		try:
 			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
 		except:
