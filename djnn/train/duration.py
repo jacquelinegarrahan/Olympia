@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-import numpy as np
 import sys
 from data.song import Song
 from datetime import datetime
@@ -15,6 +14,7 @@ from keras.layers import Dropout
 from keras.layers import LSTM
 from keras.layers import Activation
 from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping
 import json
 import glob
 import copy
@@ -29,7 +29,6 @@ def getAllSongs(midiDir):
 	for file in glob.glob(ROOT_DIR + '/midis/' + midiDir + "/*.mid"):
 		song = Song(file)
 		songs.append(song)
-	print(songs)
 	return songs
 
 
@@ -70,7 +69,6 @@ def prepareDurations(progression, mapping, sequenceLen):
 def diversityCheck(duration):
 	#use the index of dispersion here as a filter
 	iod = numpy.var(duration)/numpy.mean(duration)
-	print(iod)
 	if iod > 1:
 		return True
 	else:
@@ -91,7 +89,11 @@ def trainDuration(songs, mapping, sequenceLen, epochs):
 	model = lstm(sequenceLen, len(mapping))
 	for progression in progressions:
 		inputs, outputs = prepareDurations(progression, mapping, sequenceLen)
-		model.fit(inputs, outputs, epochs=epochs, batch_size=128)
+		n_train = int(0.9*len(inputs))
+		es = EarlyStopping(monitor='val_loss', mode='min', verbose=1,  min_delta=1, patience=50)
+		trainX, trainy = inputs[:n_train], outputs[:n_train]
+		testX, testy = inputs[n_train:], outputs[n_train:]
+		model.fit(trainX, trainy, validation_data=(testX, testy), epochs=epochs, batch_size=128, callbacks=[es])
 		try:
 			preparedInputs = numpy.concatenate((preparedInputs, inputs))
 		except:
