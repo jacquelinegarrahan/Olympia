@@ -90,7 +90,7 @@ def train_harmonies(songs, mapping, sequence_len, epochs):
 	for progression in progressions:
 		inputs, outputs = prepare_harmonies(progression, mapping, sequence_len)
 		n_train = int(0.9*len(inputs))
-		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=25)
+		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=50)
 		model.fit(inputs, outputs, epochs=epochs, batch_size=128, callbacks=[es])
 		try:
 			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
@@ -116,8 +116,8 @@ def lstm(sequence_len, n_notes):
 	model.add(Dropout(0.1))
 	model.add(Dense(n_notes))
 	model.add(Activation('softmax'))
-	#optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
-	optimizer = "rmsprop"
+	optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+	#optimizer = "rmsprop"
 	model.compile(loss='categorical_crossentropy', optimizer=optimizer)
 	return model
 
@@ -145,7 +145,7 @@ def save_model(model, model_name):
 
 if __name__ == '__main__':
 	sequence_len = 24
-	epochs = 500
+	epochs = 100
 	midi_dir = 'test_midis'
 	model_name = 'allTest_harmony'
 	songs = get_all_songs(midi_dir)
