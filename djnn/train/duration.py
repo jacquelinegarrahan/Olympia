@@ -90,7 +90,7 @@ def train_duration(songs, mapping, sequence_len, epochs):
 	for progression in progressions:
 		inputs, outputs = prepare_durations(progression, mapping, sequence_len)
 		n_train = int(0.9*len(inputs))
-		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=25)
+		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=50)
 
 		model.fit(inputs, outputs, epochs=epochs, batch_size=128, callbacks=[es])
 		try:
