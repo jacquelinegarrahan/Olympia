@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import numpy
 import sys
 from data.song import Song
@@ -70,7 +69,8 @@ def diversity_check(harmonics, mapping):
 	#use the index of dispersion here as a filter
 	harm_vec = [mapping[harm] for harm in harmonics]
 	iod = numpy.var(harm_vec)/numpy.mean(harm_vec)
-	if iod > 5:
+	print(iod)
+	if iod > 10:
 		return True
 	else:
 		return False
@@ -83,8 +83,8 @@ def train_harmonies(songs, mapping, sequence_len, epochs):
 	for song in songs:
 		rns = song.convert_harmonic_to_roman_numerals()
 		if len(rns) > minLen:
-
-			progressions.append(rns)
+			if diversity_check(rns, mapping):
+				progressions.append(rns)
 
 	model = lstm(sequence_len, len(mapping))
 	for progression in progressions:
@@ -145,10 +145,10 @@ def save_model(model, model_name):
 
 if __name__ == '__main__':
 	sequence_len = 24
-	epochs = 100
+	epochs = 50
 	midi_dir = 'test_midis'
 	model_name = 'allTest_harmony'
 	songs = get_all_songs(midi_dir)
-	mapping = get_map(songs, modelName)
+	mapping = get_map(songs, model_name)
 	noteInputs, model = train_harmonies(songs, mapping, sequence_len, epochs)
 	save_model(model, model_name)
