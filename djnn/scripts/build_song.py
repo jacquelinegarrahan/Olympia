@@ -6,12 +6,13 @@ import json
 import numpy
 from keras.utils import np_utils
 import copy
+import random
 ROOT_DIR = get_project_root()
 
 
 def load_model(model_name, model_type):
-	modelFile = ROOT_DIR + '/files/models/' + model_type + '/model_' + model_name + '.json'
-	weightFile = ROOT_DIR + '/files/models/' + model_type + '/weights_' + model_name + '.h5'
+	model_file = ROOT_DIR + '/files/models/' + model_type + '/model_' + model_name + '.json'
+	weight_file = ROOT_DIR + '/files/models/' + model_type + '/weights_' + model_name + '.h5'
 
 	# load json and create model
 	json_file = open(model_file, 'r')
@@ -97,15 +98,23 @@ def write_midi(generated_harmony, generated_durations, key, song_name):
 def get_best_note(pitches, last_pitches):
 	new_chord_ps = [pitch.ps for pitch in pitches]
 	old_chord_ps = [pitch.ps for pitch in last_pitches]
+	max_len = len(new_chord_ps)
+	if len(old_chord_ps) < max_len:
+		max_len = len(old_chord_ps)
+	
+	new_chord_ps = new_chord_ps[:max_len]
+	old_chord_ps = old_chord_ps[:max_len]
+
 
 	dif_indices = []
-	for i in len(new_chord_ps):
-		if new_chord_ps[i] != old_chord_ps[i]:
+	for i, ps in enumerate(new_chord_ps):
+		if ps != old_chord_ps[i]:
 			dif_indices.append(i)
-	
+
 	if len(dif_indices) == 0:
 		#lastPs = lastNote.ps
-		return pitches[0]
+		choice = random.randint(0, len(pitches)-1)
+		return pitches[choice]
 	else:
 		return pitches[numpy.random.choice(dif_indices)]
 
@@ -131,12 +140,12 @@ def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len
 	harmony_sequence = numpy.reshape(harmony_start, (1, sequence_len, len(note_map)))
 	duration_sequence = numpy.reshape(duration_start, (1, sequence_len, len(duration_map)))
 
-	generated_harmony = convert_notes(harmony_sequence, noteMap)
+	generated_harmony = convert_notes(harmony_sequence, note_map)
 	generated_duration = convert_duration(duration_sequence, duration_map)
 
 	for note in range(n_notes):
 		harmonic_input = copy.deepcopy(harmony_sequence)
-		harmony_val = harmonyModel.predict(harmony_sequence, verbose=0)
+		harmony_val = harmony_model.predict(harmony_sequence, verbose=0)
 		harmony_idx = numpy.argmax(harmony_val)
 
 		harmony = list(note_map.keys())[list(note_map.values()).index(harmony_idx)]
@@ -154,7 +163,7 @@ def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len
 		duration_input = copy.deepcopy(duration_sequence)
 		duration_val = duration_model.predict(duration_sequence, verbose=0)
 
-		duration = checkDuration(duration_val, duration_map, generated_duration)
+		duration = check_duration(duration_val, duration_map, generated_duration)
 		generated_duration.append(duration)
 		next_duration =  np_utils.to_categorical([duration_map[duration]], num_classes=len(duration_map))
 		next_duration = numpy.reshape(next_duration, (1, 1, len(duration_map)))
@@ -168,12 +177,12 @@ def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len
 
 
 if __name__ == '__main__':
-	duration_model_name = 'allTest_duration'
-	harmony_model_name =  'allTest_harmony'
+	duration_model_name = 'subset'
+	harmony_model_name =  'subset'
 	n_notes = 300
 	key = 'D'
 	sequence_len = 24
-	song_name = 'hello1.mid'
+	song_name = 'subset.mid'
 	generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len, song_name)
 
 

@@ -90,7 +90,7 @@ def train_harmonies(songs, mapping, sequence_len, epochs):
 	for progression in progressions:
 		inputs, outputs = prepare_harmonies(progression, mapping, sequence_len)
 		n_train = int(0.9*len(inputs))
-		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=50)
+		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=100)
 		model.fit(inputs, outputs, epochs=epochs, batch_size=128, callbacks=[es])
 		try:
 			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
@@ -145,9 +145,9 @@ def save_model(model, model_name):
 
 if __name__ == '__main__':
 	sequence_len = 24
-	epochs = 50
-	midi_dir = 'test_midis'
-	model_name = 'allTest_harmony'
+	epochs = 500
+	midi_dir = 'may4'
+	model_name = 'may4'
 	songs = get_all_songs(midi_dir)
 	mapping = get_map(songs, model_name)
 	noteInputs, model = train_harmonies(songs, mapping, sequence_len, epochs)
