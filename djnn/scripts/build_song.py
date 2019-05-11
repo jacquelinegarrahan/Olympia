@@ -1,5 +1,5 @@
 from data.song import Song
-from music21 import roman, stream, note
+from music21 import roman, stream, note, chord
 from src.utils import get_project_root
 from keras.models import model_from_json
 import json
@@ -55,6 +55,7 @@ def check_duration(duration_val, duration_map, generated_durations):
 	#benchmark = sum(generatedDurations) % 4 
 	#newBenchmark = (sum(generatedDurations) + newDuration) % 4
 	#if newBenchmark > benchmark
+
 	idx = numpy.argmax(duration_val)
 
 	duration = list(duration_map.keys())[list(duration_map.values()).index(idx)]
@@ -90,6 +91,27 @@ def write_midi(generated_harmony, generated_durations, key, song_name):
 		#duration = choice(durationOptions, 1, p=durationProbs)
 
 	midi_stream = stream.Stream(output_notes)
+	measures = midi_stream.makeMeasures()
+
+	new_chords = []
+	for measure in measures:
+#		measure_offset = measure.offset
+
+		measure_notes = measure.notes
+		#transpose notes down an octave
+		for mnote in measure_notes:
+			mnote.octave = mnote.octave -1
+		if len(measure_notes) > 0:
+			measure_offset = measure.offset + measure_notes[0].offset
+			new_chord = chord.Chord(measure_notes)
+			new_chord.duration.quarterLength = 4.0
+			#if newChord.isConsonant():
+			new_chord.offset= measure_offset
+			new_chords.append(new_chord)
+
+	for chord_item in new_chords:
+		midi_stream.insert(chord_item)
+
 	save_file = ROOT_DIR + '/files/songs/' + song_name
 
 	midi_stream.write('midi', fp=save_file)
@@ -182,7 +204,7 @@ if __name__ == '__main__':
 	n_notes = 300
 	key = 'D'
 	sequence_len = 24
-	song_name = 'subset.mid'
+	song_name = 'test1.mid'
 	generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len, song_name)
 
 
