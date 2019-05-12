@@ -1,6 +1,12 @@
 from music21 import converter, corpus, instrument, midi, note, chord, pitch, roman, stream
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import numpy as np
+from src.utils import get_project_root
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import normalize
+ROOT_DIR = get_project_root()
+
 
 class Song():
 
@@ -14,6 +20,7 @@ class Song():
 		self.harmonic = None
 		self.roman_numerals = None
 		self.duration_progression = None
+		self.notes = None
 		self.load_midi()
 
 	def load_midi(self, remove_drums=True):
@@ -30,6 +37,7 @@ class Song():
 		self.get_expected_key()
 		self.get_time_signatures()
 		self.get_harmonic_reduction()
+		self.extract_all_notes()
 		self.convert_harmonic_to_roman_numerals()
 		self.get_duration_progression()
 
@@ -64,6 +72,15 @@ class Song():
 		
 		return ret, parent_element
 
+	def extract_all_notes(self):
+		self.notes = []
+		for i in range(len(self.midi.parts)):
+			top = self.midi.parts[i].flat.notes                  
+			y, parent_element = self.extract_notes(top)
+			for nt in parent_element:
+				self.notes.append(nt)
+		return self.notes
+
 	def get_expected_key(self):
 		self.expected_key = self.midi.analyze('key')
 		return self.expected_key
@@ -85,9 +102,7 @@ class Song():
 					continue
 					
 				# count all notes length in each measure,
-				# get the most frequent ones and try to create a chord with them.
-				count_dict = dict()
-				bass_note = note_count(measure, count_dict)
+				count_dict = note_count(measure)
 				if (len(count_dict) < 1):
 					ret.append("-") # Empty measure
 					continue
@@ -179,56 +194,99 @@ class Song():
 		plt.xlabel("Number of quarter notes (beats)")
 		plt.title('Voices motion approximation, each color is a different instrument, red lines show each octave')
 		plt.show()
-	
 
-def note_count(measure, count_dict):
-    bass_note = None
-    for chord in measure.recurse().getElementsByClass('Chord'):
-        # All notes have the same length of its chord parent.
-        note_length = chord.quarterLength
-        for note in chord.pitches:          
-            # If note is "C5", note.name is "C". We use "C5"
-            # style to be able to detect more precise inversions.
-            note_name = str(note) 
-            if (bass_note is None or bass_note.ps > note.ps):
-                bass_note = note
-                
-            if note_name in count_dict:
-                count_dict[note_name] += note_length
-            else:
-                count_dict[note_name] = note_length
-        
-    return bass_note
-                
+	def get_self_similarity(self, n_mes=1, n_clusters=20):
+		representations = []
+		measures = self.midi.makeMeasures()
+		measures = measures.getElementsByClass('Measure')
+
+		measureDict = {}
+
+		for i in range(int(len(measures)/n_mes)):
+			for nt in self.notes:
+				if nt.offset >= 4*i*n_mes and nt.offset < 4*n_mes*(1+i):
+					if i not in measureDict:
+						measureDict[i] = [nt]
+					else:
+						measureDict[i].append(nt)
+
+		#iterate over measure snippets to create structure
+		for i in range(int(len(measures)/n_mes)):
+			if i in measureDict:
+				measure_offset_rep = []
+				measure_note_rep = []
+				elNotes = []
+
+				for mnote in measureDict[i]:
+						if mnote.isChord:
+							for cnote in mnote:
+								measure_offset_rep.append(cnote.offset - 4*i*n_mes)
+								measure_note_rep.append(cnote.pitch.ps)
+						else:
+							measure_offset_rep.append(mnote.offset - 4*i*n_mes)
+							measure_note_rep.append(mnote.pitch.ps)
+
+				if len(measure_note_rep) > 0 and len(measure_note_rep) > 0:
+					representations.append([np.mean(measure_offset_rep), np.mean(measure_note_rep)])
+			
+		return get_cluster_labels(np.array(representations))
+			
+
+def note_count(measure):
+	count_dict = {}
+	base_note = None
+	for chord in measure.recurse().getElementsByClass('Chord'):
+		# All notes have the same length of its chord parent.
+		note_length = chord.quarterLength
+		for note in chord.pitches:          
+			# If note is "C5", note.name is "C". We use "C5"
+			# style to be able to detect more precise inversions.
+			note_name = str(note) 
+			if (base_note is None or base_note.ps > note.ps):
+				base_note = note
+				
+			if note_name in count_dict:
+				count_dict[note_name] += note_length
+			else:
+				count_dict[note_name] = note_length
+		
+	return count_dict
+				
 def simplify_roman_name(roman_numeral):
-    # Chords can get nasty names as "bII#86#6#5",
-    # in this method we try to simplify names, even if it ends in
-    # a different chord to reduce the chord vocabulary and display
-    # chord function clearer.
-    ret = roman_numeral.romanNumeral
-    inversion_name = None
-    inversion = roman_numeral.inversion()
-    
-    # Checking valid inversions.
-    if ((roman_numeral.isTriad() and inversion < 3) or
-            (inversion < 4 and
-                 (roman_numeral.seventh is not None or roman_numeral.isSeventh()))):
-        inversion_name = roman_numeral.inversionName()
-        
-    if (inversion_name is not None):
-        ret = ret + str(inversion_name)
-        
-    elif (roman_numeral.isDominantSeventh()): ret = ret + "M7"
-    elif (roman_numeral.isDiminishedSeventh()): ret = ret + "o7"
-    return ret
+	# Chords can get nasty names as "bII#86#6#5",
+	# in this method we try to simplify names, even if it ends in
+	# a different chord to reduce the chord vocabulary and display
+	# chord function clearer.
+	ret = roman_numeral.romanNumeral
+	inversion_name = None
+	inversion = roman_numeral.inversion()
+	
+	# Checking valid inversions.
+	if ((roman_numeral.isTriad() and inversion < 3) or
+			(inversion < 4 and
+				 (roman_numeral.seventh is not None or roman_numeral.isSeventh()))):
+		inversion_name = roman_numeral.inversionName()
+		
+	if (inversion_name is not None):
+		ret = ret + str(inversion_name)
+		
+	elif (roman_numeral.isDominantSeventh()): ret = ret + "M7"
+	elif (roman_numeral.isDiminishedSeventh()): ret = ret + "o7"
+	return ret
+
 	
 
-#def removeConsecutiveFifths()
+
+def get_cluster_labels(matrix, n_clusters=20):
+	normed_matrix = normalize(matrix, axis=1, norm='l1', n_clusters=n_clusters)
+	kclusterer = KMeans().fit(normed_matrix)
+	
+	labels = kclusterer.labels_
+	return labels
 
 
 if __name__ == '__main__':
-	filepath = 'test_midis/coldplay-clocks_version_2.mid'
+	filepath = ROOT_DIR + '/midis/test_midis/coldplay-clocks_version_2.mid'
 	song = Song(filepath, 'Clocks', 'Coldplay')
-	print(song.convert_harmonic_to_roman_numerals())
-	song.plot_parts()
+	song.get_self_similarity()
 	#timeSignature.beatCount, timeSignature.denominator
