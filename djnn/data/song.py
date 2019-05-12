@@ -131,7 +131,8 @@ class Song():
 			y, parent_element = self.extract_notes(top)
 			for nt in parent_element:
 				try:
-					durations.append(float(nt.duration.quarterLength))
+					if nt.duration.quarterLength < 4 :
+						durations.append(float(nt.duration.quarterLength))
 				except:
 					pass
 
