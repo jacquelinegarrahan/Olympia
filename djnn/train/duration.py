@@ -68,6 +68,7 @@ def prepare_durations(progression, mapping, sequence_len):
 def diversity_check(duration):
 	#use the index of dispersion here as a filter
 	iod = numpy.var(duration)/numpy.mean(duration)
+	print(iod)
 	if iod > 1:
 		return True
 	else:
