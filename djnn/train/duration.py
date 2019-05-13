@@ -80,6 +80,7 @@ def train_duration(songs, mapping, sequence_len, epochs):
 	minLen = 2 * sequence_len
 	for song in songs:
 		durations = song.get_duration_progression()
+		print(durations)
 		if len(durations) > minLen:
 			if diversity_check(durations):
 				progressions.append(durations)
