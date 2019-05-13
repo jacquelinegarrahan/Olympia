@@ -1,7 +1,7 @@
 import sys
 from data.song import Song
 from datetime import datetime
-import numpy
+import numpy as np
 import csv
 import os
 from sklearn.preprocessing import normalize
@@ -31,71 +31,57 @@ def get_all_songs(midi_dir):
 	return songs
 
 
-def get_map(songs, model_name):
-	durations = []
-	for song in songs:
-		prog = song.get_duration_progression()
-		for item in prog:
-			if item not in durations:
-				durations.append(item)
-	mapping =  dict((item, number) for number, item in enumerate(durations))
-	with open(ROOT_DIR + '/files/mappings/'+ model_name + '_durations.json', 'w') as f:
-		f.write(json.dumps(mapping))
-	return mapping
-
-
-def prepare_durations(progression, mapping, sequence_len):
+def prepare_sequences(sequence, sequence_len, n_clusters):
 	inputs = []
 	outputs = []
 
-	for i in range(0, len(progression) - sequence_len, 1):
-		prog_in = progression[i:i + sequence_len]
-		prog_out = progression[i + sequence_len]
-		inputs.append([mapping[item] for item in prog_in])
-		outputs.append(mapping[prog_out])
+	for i in range(0, len(sequence) - sequence_len, 1):
+		prog_in = sequence[i:i + sequence_len]
+		prog_out = sequence[i + sequence_len]
+		inputs.append(prog_in)
+		outputs.append(prog_out)
 	
 	n_sequences = len(inputs)
-
-	inputs = np_utils.to_categorical(inputs, num_classes=len(mapping))
-	inputs = numpy.reshape(inputs, (n_sequences, sequence_len, len(mapping)))
-	outputs = np_utils.to_categorical(outputs, num_classes =len(mapping))
-	inputs = inputs / len(mapping)
+	print(n_clusters)
+	inputs = np_utils.to_categorical(inputs, num_classes=n_clusters)
+	inputs = np.reshape(inputs, (n_sequences, sequence_len, n_clusters))
+	outputs = np_utils.to_categorical(outputs, num_classes=n_clusters)
+	inputs = inputs / n_clusters
 
 	return inputs, outputs
 
 
 
-def diversity_check(duration):
+def diversity_check(sequence):
 	#use the index of dispersion here as a filter
-	iod = numpy.var(duration)/numpy.mean(duration)
+	iod = np.var(sequence)/np.mean(sequence)
 	if iod > 1:
 		return True
 	else:
 		return False
 
 
-def train_duration(songs, mapping, sequence_len, epochs):
-	progressions = []
+def train_sequences(songs, sequence_len, epochs, n_mes, n_clusters):
+	sequences = []
 	prepared_inputs = False
-	minLen = 2 * sequence_len
 	for song in songs:
-		durations = song.get_duration_progression()
-		if len(durations) > minLen:
-			if diversity_check(durations):
-				progressions.append(durations)
-	
+		sequence = song.get_cluster_sequence(n_mes=n_mes, n_clusters=n_clusters)
+		if isinstance(sequence, (np.ndarray, np.generic,)):
+			if diversity_check(sequence):
+				sequences.append(sequence)
 
-	model = lstm(sequence_len, len(mapping))
-	for progression in progressions:
-		inputs, outputs = prepare_durations(progression, mapping, sequence_len)
-		n_train = int(0.9*len(inputs))
+
+	model = lstm(sequence_len, n_clusters)
+	for sequence in sequences:
+		inputs, outputs = prepare_sequences(sequence, sequence_len, n_clusters)
 		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=100)
 
 		model.fit(inputs, outputs, epochs=epochs, batch_size=128, callbacks=[es])
 		try:
-			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
+			prepared_inputs = np.concatenate((prepared_inputs, inputs))
 		except:
 			prepared_inputs = inputs
+
 
 	return prepared_inputs, model
 	
@@ -122,10 +108,9 @@ def lstm(sequence_len, n_notes):
 	return model
 
 
-
 def save_model(model, model_name):
-	model_file = ROOT_DIR + '/files/models/duration/model_' + model_name + '.json'
-	weight_file = ROOT_DIR + '/files/models/duration/weights_' + model_name + '.h5'
+	model_file = ROOT_DIR + '/files/models/sequence/model_' + model_name + '.json'
+	weight_file = ROOT_DIR + '/files/models/sequence/weights_' + model_name + '.h5'
 
 	# serialize model to JSON
 	model_json = model.to_json()
@@ -136,11 +121,12 @@ def save_model(model, model_name):
 
 
 if __name__ == '__main__':
-	sequence_len = 24
+	sequence_len = 4
 	epochs = 500
 	midi_dir = 'test_midis'
-	model_name = ''
+	model_name = 'sequence_build'
+	n_mes = 2
+	n_clusters = 20
 	songs = get_all_songs(midi_dir)
-	mapping = get_map(songs, model_name)
-	note_inputs, model = train_duration(songs, mapping, sequence_len, epochs)
+	note_inputs, model = train_sequences(songs, sequence_len, epochs, n_mes, n_clusters)
 	save_model(model, model_name)

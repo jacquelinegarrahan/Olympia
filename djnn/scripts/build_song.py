@@ -59,7 +59,10 @@ def check_duration(duration_val, duration_map, generated_durations):
 	idx = numpy.argmax(duration_val)
 
 	duration = list(duration_map.keys())[list(duration_map.values()).index(idx)]
-	return duration
+	if float(duration) > 4.0:
+		return str(1.0)
+	else:
+		return duration
 
 
 

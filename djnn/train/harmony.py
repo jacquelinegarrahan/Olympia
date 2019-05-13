@@ -69,7 +69,6 @@ def diversity_check(harmonics, mapping):
 	#use the index of dispersion here as a filter
 	harm_vec = [mapping[harm] for harm in harmonics]
 	iod = numpy.var(harm_vec)/numpy.mean(harm_vec)
-	print(iod)
 	if iod > 10:
 		return True
 	else:

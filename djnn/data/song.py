@@ -195,7 +195,7 @@ class Song():
 		plt.title('Voices motion approximation, each color is a different instrument, red lines show each octave')
 		plt.show()
 
-	def get_self_similarity(self, n_mes=1, n_clusters=20):
+	def get_cluster_sequence(self, n_mes=1, n_clusters=20):
 		representations = []
 		measures = self.midi.makeMeasures()
 		measures = measures.getElementsByClass('Measure')
@@ -228,8 +228,7 @@ class Song():
 
 				if len(measure_note_rep) > 0 and len(measure_note_rep) > 0:
 					representations.append([np.mean(measure_offset_rep), np.mean(measure_note_rep)])
-			
-		return get_cluster_labels(np.array(representations))
+		return get_cluster_labels(np.array(representations), n_clusters=n_clusters)
 			
 
 def note_count(measure):
@@ -278,11 +277,14 @@ def simplify_roman_name(roman_numeral):
 
 
 def get_cluster_labels(matrix, n_clusters=20):
-	normed_matrix = normalize(matrix, axis=1, norm='l1', n_clusters=n_clusters)
-	kclusterer = KMeans().fit(normed_matrix)
-	
-	labels = kclusterer.labels_
-	return labels
+	normed_matrix = normalize(matrix, axis=1, norm='l1')
+	if matrix.shape[0] > n_clusters:
+		kclusterer = KMeans(n_clusters=n_clusters).fit(normed_matrix)
+		
+		labels = kclusterer.labels_
+		return labels
+	else:
+		return False
 
 
 if __name__ == '__main__':
