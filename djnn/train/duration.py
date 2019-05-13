@@ -139,7 +139,7 @@ if __name__ == '__main__':
 	sequence_len = 24
 	epochs = 500
 	midi_dir = 'test_midis'
-	model_name = ''
+	model_name = 'duration2'
 	songs = get_all_songs(midi_dir)
 	mapping = get_map(songs, model_name)
 	note_inputs, model = train_duration(songs, mapping, sequence_len, epochs)
