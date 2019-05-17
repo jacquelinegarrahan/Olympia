@@ -145,8 +145,8 @@ def save_model(model, model_name):
 if __name__ == '__main__':
 	sequence_len = 24
 	epochs = 500
-	midi_dir = 'may4'
-	model_name = 'may4'
+	midi_dir = 'test_midis'
+	model_name = 'harmony_2'
 	songs = get_all_songs(midi_dir)
 	mapping = get_map(songs, model_name)
 	noteInputs, model = train_harmonies(songs, mapping, sequence_len, epochs)
