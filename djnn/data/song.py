@@ -2,123 +2,58 @@ from music21 import converter, corpus, instrument, midi, note, chord, pitch, rom
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import numpy as np
-from src.utils import get_project_root
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import normalize
-ROOT_DIR = get_project_root()
+
+from djnn import ROOT_DIR
 
 
-class Song():
+class Part():
 
-	def __init__(self, raw_path, title=None, artist=None):
-		self.title = title
-		self.artist = artist
-		self.raw_path = raw_path
-		self.instruments = None
-		self.expected_key = None
-		self.time_signature = None
+	def __init__(self, part_obj):
+
+		self.instrument = part_obj.partName
+		self.notes = part_obj.notes
+		self.notes_and_rests = part_obj.notesAndRests
 		self.harmonic = None
 		self.roman_numerals = None
 		self.duration_progression = None
-		self.notes = None
-		self.load_midi()
-
-	def load_midi(self, remove_drums=True):
-		mf = midi.MidiFile()
-		mf.open(self.raw_path)
-		mf.read()
-		mf.close()
-		if (remove_drums):
-			for i in range(len(mf.tracks)):
-				mf.tracks[i].events = [ev for ev in mf.tracks[i].events if ev.channel != 10]
-
-		self.midi = midi.translate.midiFileToStream(mf)
-		self.get_instruments()
-		self.get_expected_key()
-		self.get_time_signatures()
+		self.chord_progression = part_obj.chordify()
 		self.get_harmonic_reduction()
-		self.extract_all_notes()
 		self.convert_harmonic_to_roman_numerals()
 		self.get_duration_progression()
 
-	def get_instruments(self):
-		instruments = []
-		part_stream = self.midi.parts.stream()
-		for p in part_stream:
-			aux = p
-			instruments.append(p.partName)
-
-		self.instruments = instruments 
-		return instruments
-		
-	def getPartByInstrument(self, instrument):
-		part_stream = self.midi.parts.stream()
-		print("List of instruments found on MIDI file:")
-		for p in part_stream:
-			if p.partName == instrument:
-				return p
-	
-	def extract_notes(self, part):
-		parent_element = []
-		ret = []
-		for nt in part.flat.notes:        
-			if isinstance(nt, note.Note):
-				ret.append(max(0.0, nt.pitch.ps))
-				parent_element.append(nt)
-			elif isinstance(nt, chord.Chord):
-				for pitch in nt.pitches:
-					ret.append(max(0.0, pitch.ps))
-					parent_element.append(nt)
-		
-		return ret, parent_element
-
-	def extract_all_notes(self):
-		self.notes = []
-		for i in range(len(self.midi.parts)):
-			top = self.midi.parts[i].flat.notes                  
-			y, parent_element = self.extract_notes(top)
-			for nt in parent_element:
-				self.notes.append(nt)
-		return self.notes
-
-	def get_expected_key(self):
-		self.expected_key = self.midi.analyze('key')
-		return self.expected_key
-
-	def get_time_signatures(self):
-		time_signature = self.midi.getTimeSignatures()[0]
-		self.time_signature = '{}/{}'.format(time_signature.beatCount, time_signature.denominator)
-		return self.time_signature
-
 	def get_harmonic_reduction(self):
-		ret =[]
-		try:
-			temp_midi = stream.Score()
-			temp_midi_chords = self.midi.chordify()
-			temp_midi.insert(0, temp_midi_chords)
-			max_notes_per_chord = 4 
-			for measure in temp_midi_chords.measures(0, None): # None = get all measures.
-				if (type(measure) != stream.Measure):
-					continue
-					
-				# count all notes length in each measure,
-				count_dict = note_count(measure)
-				if (len(count_dict) < 1):
-					ret.append("-") # Empty measure
-					continue
-					
-				sorted_items = sorted(count_dict.items(), key=lambda x:x[1])
-				sorted_notes = [item[0] for item in sorted_items[-max_notes_per_chord:]]
-				measure_chord = chord.Chord(sorted_notes)
-					
-				ret.append(measure_chord)
+		reduction = []
 
-			self.harmonic = ret
-		except:
-			print('CHORDIFY ERROR! {}'.format(self.raw_path))
-			self.harmonic = []
-		return ret
-	
+		temp_midi = stream.Score()
+		temp_midi.insert(0, self.chord_progression)
+		max_notes_per_chord = 4 
+
+		for measure in temp_midi.measures(0, None): # None = get all measures.
+			if (type(measure) != stream.Measure):
+				continue
+					
+			# count all notes length in each measure,
+			count_dict = note_count(measure)
+			if (len(count_dict) < 1):
+				ret.append("-") # Empty measure
+				continue
+					
+			sorted_items = sorted(count_dict.items(), key=lambda x:x[1])
+			sorted_notes = [item[0] for item in sorted_items[-max_notes_per_chord:]]
+			measure_chord = chord.Chord(sorted_notes)
+					
+			reduction.append(measure_chord)
+
+		self.harmonic = reduction
+
+		#except:
+		#	print('CHORDIFY ERROR!')
+		#	self.harmonic = []
+		
+		return reduction
+		
 	def convert_harmonic_to_roman_numerals(self):
 		ret = []
 		for c in self.harmonic:
@@ -132,27 +67,65 @@ class Song():
 
 	def get_duration_progression(self):
 		durations = []
-		parts = []
-		allowed_durations = ['Acoustic Bass', 'Guitar', 'Fretless Bass', 'Harmonica', 'Piano', 'Saxophone', 'Baritone Saxophone',\
-			 'Tenor Saxophone', 'Harpischord', 'Electric Bass', 'Organ', 'Electric Guitar', 'Electric Organ', 'Violin', 'Timpani',\
-				 'StringInstrument', 'Clarinet', 'Brass', 'Marimba', 'Clavichord']
 
-		for part in self.midi.parts:
-			if part.partName in allowed_durations:
-				parts.append(part)
-
-		for i in range(len(parts)):
-			top = parts[i].flat.notes                  
-			y, parent_element = self.extract_notes(top)
-			for nt in parent_element:
-				try:
-					if nt.duration.quarterLength < 4 and nt.duration.quarterLength > 0.25:
-						durations.append(float(nt.duration.quarterLength))
-				except:
-					pass
+		for nt in self.notes:
+			durations.append(nt.duration.type)
 
 		self.duration_progression = durations
 		return durations
+
+
+
+
+class Song():
+
+	def __init__(self, raw_path, title=None, artist=None):
+		self.title = title
+		self.artist = artist
+		self.raw_path = raw_path
+		self.expected_key = None
+		self.time_signature = None
+		#self.load_midi()
+		self.parts = []
+		self.instruments = []
+
+		self.load_midi()
+
+	def load_midi(self, remove_drums=True):
+		mf = midi.MidiFile()
+		mf.open(self.raw_path)
+		mf.read()
+		mf.close()
+	#	if (remove_drums):
+	#		for i in range(len(mf.tracks)):
+	#			mf.tracks[i].events = [ev for ev in mf.tracks[i].events if ev.channel != 10]
+
+		self.midi = midi.translate.midiFileToStream(mf)
+		self.get_parts()
+		self.get_expected_key()
+		self.get_time_signatures()
+
+	def get_parts(self):
+		part_stream = self.midi.parts.stream()
+		for p in part_stream:
+			part_obj = Part(p)
+			self.parts.append(part_obj)
+			self.instruments.append(part_obj.instrument)
+		
+	def get_part_by_instrument(self, instrument):
+		for p in self.parts:
+			if p.partName == instrument:
+				return p
+
+	def get_expected_key(self):
+		self.expected_key = self.midi.analyze('key')
+		return self.expected_key
+
+	def get_time_signatures(self):
+		time_signature = self.midi.getTimeSignatures()[0]
+		self.time_signature = '{}/{}'.format(time_signature.beatCount, time_signature.denominator)
+		return self.time_signature
+
 
 	def plot_offset_vs_pitch(self):
 		self.midi.plot('scatter', 'offset', 'pitchClass')
@@ -287,8 +260,21 @@ def get_cluster_labels(matrix, n_clusters=20):
 		return False
 
 
+def get_all_songs(midi_dir):
+	songs = []
+	for file in glob.glob(ROOT_DIR + '/djnn/midis/' + midi_dir + "/*.mid"):
+		song = song.Song(file)
+		songs.append(song)
+	return songs
+
+
+
 if __name__ == '__main__':
-	filepath = ROOT_DIR + '/midis/test_midis/coldplay-clocks_version_2.mid'
-	song = Song(filepath, 'Clocks', 'Coldplay')
-	song.get_self_similarity()
+	filepath = ROOT_DIR + '/djnn/midis/test_midis/coldplay-clocks_version_2.mid'
+	song_obj = Song(filepath, 'Clocks', 'Coldplay')
+	for part in song_obj.parts:
+		print(part.duration_progression)
+	#song_obj.load_midi()
+	#print(song.parts)
+	#song.get_self_similarity()
 	#timeSignature.beatCount, timeSignature.denominator
