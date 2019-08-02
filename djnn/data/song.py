@@ -2,6 +2,7 @@ from music21 import converter, corpus, instrument, midi, note, chord, pitch, rom
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import numpy as np
+import glob
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import normalize
 
@@ -15,13 +16,28 @@ class Part():
 		self.instrument = part_obj.partName
 		self.notes = part_obj.notes
 		self.notes_and_rests = part_obj.notesAndRests
-		self.harmonic = None
+		self.pitch_differences = []
+		self.harmony = None
 		self.roman_numerals = None
 		self.duration_progression = None
+		self.get_pitch_differences()
 		self.chord_progression = part_obj.chordify()
 		self.get_harmonic_reduction()
 		self.convert_harmonic_to_roman_numerals()
 		self.get_duration_progression()
+
+	def get_pitch_differences(self):
+		pitch_vector = []
+		for note in self.notes:
+			if note.isChord:
+				pitch_vector.append(note[-1].pitch.ps)
+			
+			else:
+				pitch_vector.append(note.pitch.ps)
+		
+		self.pitch_differences = np.diff(pitch_vector)
+
+		print(self.pitch_differences)
 
 	def get_harmonic_reduction(self):
 		reduction = []
@@ -46,17 +62,13 @@ class Part():
 					
 			reduction.append(measure_chord)
 
-		self.harmonic = reduction
-
-		#except:
-		#	print('CHORDIFY ERROR!')
-		#	self.harmonic = []
+		self.harmony = reduction
 		
 		return reduction
 		
 	def convert_harmonic_to_roman_numerals(self):
 		ret = []
-		for c in self.harmonic:
+		for c in self.harmony:
 			if c == '-':
 				ret.append('-')
 			else:
@@ -65,16 +77,15 @@ class Part():
 		self.roman_numerals = ret
 		return ret
 
-	def get_duration_progression(self):
+	def get_duration_progression(self, prune_complex=True):
 		durations = []
 
 		for nt in self.notes:
-			durations.append(nt.duration.type)
+			if nt.duration.type != "complex":
+				durations.append(nt.duration.type)
 
 		self.duration_progression = durations
 		return durations
-
-
 
 
 class Song():
@@ -114,7 +125,7 @@ class Song():
 		
 	def get_part_by_instrument(self, instrument):
 		for p in self.parts:
-			if p.partName == instrument:
+			if p.instrument and instrument in p.instrument.lower():
 				return p
 
 	def get_expected_key(self):
@@ -263,8 +274,8 @@ def get_cluster_labels(matrix, n_clusters=20):
 def get_all_songs(midi_dir):
 	songs = []
 	for file in glob.glob(ROOT_DIR + '/djnn/midis/' + midi_dir + "/*.mid"):
-		song = song.Song(file)
-		songs.append(song)
+		song_obj = Song(file)
+		songs.append(song_obj)
 	return songs
 
 

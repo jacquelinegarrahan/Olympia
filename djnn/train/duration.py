@@ -1,5 +1,4 @@
 import sys
-from djnn.data import song
 from datetime import datetime
 import numpy
 import csv
@@ -20,129 +19,140 @@ import copy
 from numpy.random import choice
 from music21 import roman, stream, note
 from djnn import ROOT_DIR
+from djnn.data import song
 
 
 
 class DurationModel():
 
-	def __init__(self, by_instrument=False):
+	def __init__(self, song_objs, sequence_len, midi_dir, model_name, instrument=None):
 
-		pass
-	
-
-	def build_duration_map(songs, model_name):
-		durations = []
+		self.model_name = model_name
+		self.songs = song_objs
+		self.durations = []
+		self.inputs = []
+		self.outputs = []
+		self.mapping = None
+		self.sequence_len = sequence_len
 		
-		for song in songs:
-			prog = song.get_duration_progression()
-			for item in prog:
-				if item not in durations:
-					durations.append(item)
+		self.get_all_durations(instrument=instrument)
+		self.build_duration_map()
+		self.prepare_input()
 
-		mapping =  dict((item, dur) for dur, item in enumerate(durations))
+	def get_all_durations(self, instrument=None):
+		#filter durations by instrument 
+
+		if not instrument:
+			for song_obj in self.songs:
+				for part in song_obj.parts:
+					self.durations.append(part.duration_progression)
+
+		else:
+			for song_obj in self.songs:
+				print("getting duration for %s " % song_obj.raw_path)
+				part = song_obj.get_part_by_instrument(instrument)
+				if part:
+					self.durations.append(part.duration_progression)
+
+	def build_duration_map(self):
+		unique_durations = []
+		
+		for progression in self.durations:
+			for item in progression:
+				if item not in unique_durations:
+					unique_durations.append(item)
+
+		mapping =  dict((item, dur) for dur, item in enumerate(unique_durations))
 		with open(ROOT_DIR + '/djnn/files/mappings/'+ model_name + '_durations.json', 'w') as f:
 			f.write(json.dumps(mapping))
 
-		return mapping
+		self.mapping = mapping
 
 
-def prepare_durations(progression, mapping, sequence_len):
-	inputs = []
-	outputs = []
+	def prepare_input(self):
 
-	for i in range(0, len(progression) - sequence_len, 1):
-		prog_in = progression[i:i + sequence_len]
-		prog_out = progression[i + sequence_len]
-		inputs.append([mapping[item] for item in prog_in])
-		outputs.append(mapping[prog_out])
+		for progression in self.durations:
+
+			prog_input = []
+			prog_output = []
+
+			for i in range(0, len(progression) - self.sequence_len, 1):
+				prog_in = progression[i:i + self.sequence_len]
+				prog_out = progression[i + self.sequence_len]
+				prog_input.append([self.mapping[item] for item in prog_in])
+				prog_output.append(self.mapping[prog_out])
+		
+			n_sequences = len(prog_input)
+
+			categorical_input = np_utils.to_categorical(prog_input, num_classes=len(self.mapping))
+			categorical_input = numpy.reshape(categorical_input, (n_sequences, self.sequence_len, len(self.mapping)))
+			categorical_output = np_utils.to_categorical(prog_output, num_classes =len(self.mapping))
+			categorical_input = categorical_input / len(self.mapping)
+
+			self.inputs.append(categorical_input)
+			self.outputs.append(categorical_output)
+
+	def train_duration(self, epochs):
+		allowed_progressions = []
+		prepared_inputs = False
+		minLen = 2 * sequence_len
+
+		for duration in self.durations:
+			if len(duration) > minLen:
+				if len(set(duration)) >= 3:
+					allowed_progressions.append(duration)
 	
-	n_sequences = len(inputs)
+		model = self.lstm(len(self.mapping))
 
-	inputs = np_utils.to_categorical(inputs, num_classes=len(mapping))
-	inputs = numpy.reshape(inputs, (n_sequences, sequence_len, len(mapping)))
-	outputs = np_utils.to_categorical(outputs, num_classes =len(mapping))
-	inputs = inputs / len(mapping)
+		for progression in allowed_progressions:
 
-	return inputs, outputs
+			es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=100)
+			model.fit(self.inputs, self.outputs, epochs=epochs, batch_size=128, callbacks=[es])
 
+		self.save_model(model)
 
+	def lstm(self, n_notes):
+		model = Sequential()
+		model.add(LSTM(
+				256,
+				input_shape=(self.sequence_len, n_notes),
+				return_sequences=True
+			))
+		model.add(Dropout(0.3))
+		model.add(LSTM(512, return_sequences=True))
 
-def diversity_check(duration):
-	#use the index of dispersion here as a filter
-	iod = numpy.var(duration)/numpy.mean(duration)
-	if iod > .1:
-		return True
-	else:
-		return False
+		model.add(Dropout(0.2))
+		model.add(LSTM(256))
+		model.add(Dense(256))
+		model.add(Dropout(0.2))
+		model.add(Dense(n_notes))
+		model.add(Activation('softmax'))
+		optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+		#optimizer = "rmsprop"
+		model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+		return model
 
-
-def train_duration(songs, mapping, sequence_len, epochs):
-	progressions = []
-	prepared_inputs = False
-	minLen = 2 * sequence_len
-	for song in songs:
-		durations = song.get_duration_progression()
-		if len(durations) > minLen:
-			if diversity_check(durations):
-				progressions.append(durations)
-	print(progressions)
 	
+	def save_model(self, model):
+		model_file = ROOT_DIR + '/djnn/files/models/duration/model_' + self.model_name + '.json'
+		weight_file = ROOT_DIR + '/djnn/files/models/duration/weights_' + self.model_name + '.h5'
 
-	model = lstm(sequence_len, len(mapping))
-	for progression in progressions:
-		inputs, outputs = prepare_durations(progression, mapping, sequence_len)
-		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=100)
+		# serialize model to JSON
+		model_json = model.to_json()
+		with open(model_file, "w") as json_file:
+			json_file.write(model_json)
+		# serialize weights to HDF5
+		model.save_weights(weight_file)
 
-		model.fit(inputs, outputs, epochs=epochs, batch_size=128, callbacks=[es])
-		try:
-			prepared_inputs = numpy.concatenate((prepared_inputs, inputs))
-		except:
-			prepared_inputs = inputs
-
-	return prepared_inputs, model
-	
-
-def lstm(sequence_len, n_notes):
-	model = Sequential()
-	model.add(LSTM(
-			256,
-			input_shape=(sequence_len, n_notes),
-			return_sequences=True
-		))
-	model.add(Dropout(0.3))
-	model.add(LSTM(512, return_sequences=True))
-
-	model.add(Dropout(0.3))
-	model.add(LSTM(256))
-	model.add(Dense(256))
-	model.add(Dropout(0.3))
-	model.add(Dense(n_notes))
-	model.add(Activation('softmax'))
-	optimizer = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
-	#optimizer = "rmsprop"
-	model.compile(loss='categorical_crossentropy', optimizer=optimizer )
-	return model
-
-
-
-def save_model(model, model_name):
-	model_file = ROOT_DIR + '/djnn/files/models/duration/model_' + model_name + '.json'
-	weight_file = ROOT_DIR + '/djnn/files/models/duration/weights_' + model_name + '.h5'
-
-	# serialize model to JSON
-	model_json = model.to_json()
-	with open(model_file, "w") as json_file:
-		json_file.write(model_json)
-	# serialize weights to HDF5
-	model.save_weights(weight_file)
 
 
 if __name__ == '__main__':
 	sequence_len = 12
 	epochs = 50
-	midi_dir = 'test_midis'
-	model_name = 'duration2'
-	songs = get_all_songs(midi_dir)
-	mapping = get_map(songs, model_name)
-	note_inputs, model = train_duration(songs, mapping, sequence_len, epochs)
-	save_model(model, model_name)
+	midi_dir = 'small_test'
+	model_name = 'class_test'
+
+	song_objs = song.get_all_songs(midi_dir)
+	dur_model = DurationModel(song_objs, sequence_len, midi_dir, model_name, instrument="piano")
+	dur_model.train_duration(5)
+
