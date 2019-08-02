@@ -20,7 +20,7 @@ import glob
 import copy
 from numpy.random import choice
 from music21 import roman, stream, note
-from src.utils import get_project_root
+from djnn import ROOT_DIR
 
 ROOT_DIR = get_project_root()
 
@@ -43,7 +43,6 @@ def get_map(songs, model_name):
 	with open(ROOT_DIR + '/files/mappings/'+ model_name + '_harmony.json', 'w') as f:
 		f.write(json.dumps(mapping))
 	return mapping
-
 
 
 def prepare_harmonies(progression, mapping, sequence_len):

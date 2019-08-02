@@ -1,13 +1,12 @@
-from data.song import Song
-from music21 import roman, stream, note, chord
-from src.utils import get_project_root
+from djnn.data.song import Song
+from music21 import roman, stream, note, chord, instrument
 from keras.models import model_from_json
 import json
 import numpy
 from keras.utils import np_utils
 import copy
 import random
-ROOT_DIR = get_project_root()
+from djnn import ROOT_DIR
 
 
 def load_model(model_name, model_type):
@@ -22,6 +21,7 @@ def load_model(model_name, model_type):
 
 	# load weights into new model
 	loaded_model.load_weights(weight_file)
+	print('{} loaded!'.format(model_name))
 
 	return loaded_model
 
@@ -40,7 +40,7 @@ def convert_duration(durations, duration_map):
 	for input in durations:
 		idx = numpy.argmax(input)
 		result = list(duration_map.keys())[list(duration_map.values()).index(idx)]
-		durs.append(result)
+		durs.append(float(result))
 	return durs
 
 
@@ -52,17 +52,26 @@ def load_mapping(harmony_model_name, duration_model_name):
 def check_duration(duration_val, duration_map, generated_durations):
 
 	#idx = 
-	#benchmark = sum(generatedDurations) % 4 
-	#newBenchmark = (sum(generatedDurations) + newDuration) % 4
-	#if newBenchmark > benchmark
-
 	idx = numpy.argmax(duration_val)
+	float_durations = [float(i) for i in generated_durations]
+	duration =  list(duration_map.keys())[list(duration_map.values()).index(idx)]
+	benchmark = sum(float_durations) % 4 
+	new_benchmark = (sum(float_durations) + float(duration)) % 4
 
-	duration = list(duration_map.keys())[list(duration_map.values()).index(idx)]
-	if float(duration) > 4.0:
-		return str(1.0)
+	if benchmark > 0:
+		if new_benchmark < benchmark and float(duration) < 4.0 and float(duration) > 0.25:
+			return duration
+		else:
+			return str(benchmark)
+	elif benchmark == 0:
+		if float(duration) < 4.0 and float(duration) > 0.25:
+			return duration
+		else:
+			return "1.0"
 	else:
-		return duration
+		print("new")
+		print(benchmark)
+		return str(benchmark)
 
 
 
@@ -90,34 +99,58 @@ def write_midi(generated_harmony, generated_durations, key, song_name):
 		output_chords.append(rn.pitches)
 		offset = offset + float(generated_durations[i])
 
+
 		# increase offset each iteration so that notes do not stack
 		#duration = choice(durationOptions, 1, p=durationProbs)
 
-	midi_stream = stream.Stream(output_notes)
-	measures = midi_stream.makeMeasures()
+	midi_stream = stream.Stream()
+	midi_stream.append(instrument.Piano())
+	midi_stream.append(output_notes)
+	measures = midi_stream.makeMeasures(inPlace=False)
 
 	new_chords = []
-	for measure in measures:
-#		measure_offset = measure.offset
+	for i, measure in enumerate(measures):
+		if i % 2 == 0:
+			measure_offset = measure.offset
 
-		measure_notes = measure.notes
-		#transpose notes down an octave
-		for mnote in measure_notes:
-			mnote.octave = mnote.octave -1
-		if len(measure_notes) > 0:
-			measure_offset = measure.offset + measure_notes[0].offset
-			new_chord = chord.Chord(measure_notes)
-			new_chord.duration.quarterLength = 4.0
-			#if newChord.isConsonant():
-			new_chord.offset= measure_offset
-			new_chords.append(new_chord)
+			measure_notes = measure.notes
+			#transpose notes down an octave
+			for mnote in measure_notes:
+				mnote.octave = mnote.octave - 2
+			if len(measure_notes) > 0:
+				measure_offset = (i+1)*4
+				new_chord = chord.Chord(measure_notes)
+				new_chord.duration.quarterLength = 4.0
+				#if newChord.isConsonant():
+				new_chord.offset= measure_offset
+				new_chords.append(new_chord)
 
 	for chord_item in new_chords:
 		midi_stream.insert(chord_item)
+	
+
+	bass_line = []
+	for i, nt in enumerate(output_notes):
+		gen_note = note.Note()
+
+		gen_note.octave = nt.octave - 2
+		gen_note.name = nt.name
+		gen_note.duration.quarterLength = nt.duration.quarterLength 
+		gen_note.offset = nt.offset
+		bass_line.append(gen_note)
+
+	bass_midi = stream.Stream()
+	bass_midi.append(instrument.Bass())
+	bass_midi.append(bass_line)
+
 
 	save_file = ROOT_DIR + '/files/songs/' + song_name
 
-	midi_stream.write('midi', fp=save_file)
+	full_stream = stream.Stream()
+	full_stream.insert(bass_midi)
+	full_stream.insert(midi_stream)
+
+	full_stream.write('midi', fp=save_file)
 
 
 def get_best_note(pitches, last_pitches):
@@ -144,7 +177,7 @@ def get_best_note(pitches, last_pitches):
 		return pitches[numpy.random.choice(dif_indices)]
 
 
-def generate_start_sequence(sequence_len, mapping):
+def generate_start(sequence_len, mapping):
 	start = []
 	n_options = len(mapping)
 	for i in range(sequence_len):
@@ -153,14 +186,45 @@ def generate_start_sequence(sequence_len, mapping):
 	return start
 
 
-def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len, song_name):
+def build_sequence(sequence_model, n_sections, n_mes=1):
+	n_section_options = sequence_model.output_shape[1]
+	sequence_len = sequence_model.input_shape[1]
+	start = random.sample(range(0, n_section_options), sequence_len)
+	sequence = np_utils.to_categorical(start, num_classes=n_section_options)
+	sequence = numpy.reshape(sequence, (1, sequence_len, n_section_options))
+
+	generated_sequence = []
+
+	for i in range(n_sections):
+		seq_input = copy.deepcopy(sequence)
+		seq_val = sequence_model.predict(seq_input, verbose=0)
+		seq = numpy.argmax(seq_val)
+
+		generated_sequence.append(seq)
+
+		next_seq =  np_utils.to_categorical([seq], num_classes=n_section_options)
+		next_seq = numpy.reshape(next_seq, (1, 1, n_section_options))
+		next_seq = next_seq/n_section_options
+		sequence = numpy.concatenate((sequence, next_seq), axis = 1)
+		sequence = numpy.delete(sequence, 0, axis=1)
+
+	return generated_sequence
+
+
+
+def generate(sequence_model_name, duration_model_name, harmony_model_name, n_sections, key, sequence_len, song_name, n_mes=2):
 	harmony_model = load_model(harmony_model_name, 'harmony')
 	duration_model = load_model(duration_model_name, 'duration')
+	sequence_model = load_model(sequence_model_name, 'sequence')
+
+
+	sequence = build_sequence(sequence_model, n_sections)
+	n_diverse_elements = len(set(sequence))
 
 	note_map, duration_map  = load_mapping(harmony_model_name, duration_model_name)
 
-	harmony_start = generate_start_sequence(sequence_len, note_map)
-	duration_start = generate_start_sequence(sequence_len, duration_map)
+	harmony_start = generate_start(sequence_len, note_map)
+	duration_start = generate_start(sequence_len, duration_map)
 
 	harmony_sequence = numpy.reshape(harmony_start, (1, sequence_len, len(note_map)))
 	duration_sequence = numpy.reshape(duration_start, (1, sequence_len, len(duration_map)))
@@ -168,9 +232,12 @@ def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len
 	generated_harmony = convert_notes(harmony_sequence, note_map)
 	generated_duration = convert_duration(duration_sequence, duration_map)
 
-	for note in range(n_notes):
+	n_notes = n_sections * n_mes * 5 # produce extra for more material
+
+	for i, note in enumerate(range(n_notes)):
+		print('generating note %s', i)
 		harmonic_input = copy.deepcopy(harmony_sequence)
-		harmony_val = harmony_model.predict(harmony_sequence, verbose=0)
+		harmony_val = harmony_model.predict(harmonic_input, verbose=0)
 		harmony_idx = numpy.argmax(harmony_val)
 
 		harmony = list(note_map.keys())[list(note_map.values()).index(harmony_idx)]
@@ -186,7 +253,7 @@ def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len
 		#process duration
 
 		duration_input = copy.deepcopy(duration_sequence)
-		duration_val = duration_model.predict(duration_sequence, verbose=0)
+		duration_val = duration_model.predict(duration_input, verbose=0)
 
 		duration = check_duration(duration_val, duration_map, generated_duration)
 		generated_duration.append(duration)
@@ -196,7 +263,65 @@ def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len
 		duration_sequence = numpy.concatenate((duration_sequence, next_duration), axis = 1)
 		duration_sequence = numpy.delete(duration_sequence, 0, axis=1)
 
-	output = write_midi(generated_harmony, generated_duration, key, song_name)
+#	print(generated_duration)
+	generated_duration_floats = [float(i) for i in generated_duration]
+	original_offsets = [sum(generated_duration_floats[0:i]) for i in range(len(generated_duration))]
+	offsets=copy.deepcopy(original_offsets)
+
+	sections = []
+	i=1
+	for i in range(len(original_offsets)):
+		start = offsets[i]
+		end =  offsets[i]+ 4 * n_mes
+		measure_durations = []
+		measure_harmony = []
+		for j, item in enumerate(offsets):
+			if item >= start and item < end:
+				if generated_duration_floats[j] + offsets[j] > end:
+					new_dur = end - offsets[j]
+					measure_durations.append(float(new_dur))
+					measure_harmony.append(generated_harmony[j])
+
+				if  j != len(offsets) - 1:
+					if offsets[j] + generated_duration_floats[j] < end and offsets[j+1] > end:
+						measure_durations.append(end - offsets[j])
+						measure_harmony.append(generated_harmony[j])
+
+					else:
+						measure_durations.append(float(generated_duration[j]))
+						measure_harmony.append(generated_harmony[j])
+
+		sections.append({'durations': measure_durations, 'harmony': measure_harmony})
+
+
+	diversity_ranked_sections = sorted(sections, key=lambda k: len(set(k['durations']))+len(set(k['harmony'])), reverse=True)
+	complexity_bound = n_mes * 4 *10 
+#	diversity_ranked_sections = [item for item in diversity_ranked_sections if len(item['durations']) < complexity_bound]
+
+	sequence_map = {}
+
+	sorted_freq = sorted(set(sequence), key = sequence.count)
+
+	print('Len sorted freq:', len(sorted_freq))
+	print('len diversity ranked:', len(diversity_ranked_sections))
+
+	for i, item in enumerate(sorted_freq):
+		sequence_map[item] = diversity_ranked_sections[i]
+
+
+
+
+	new_duration = []
+	new_harmony = []
+	#build new midi
+	for i in range(n_sections):
+		seq_assign = sequence_map[sequence[i]]
+		new_duration += seq_assign['durations']
+		new_harmony += seq_assign['harmony']
+
+
+	output = write_midi(new_harmony, new_duration, key, song_name)
+
 
 	return output
 
@@ -204,11 +329,13 @@ def generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len
 if __name__ == '__main__':
 	duration_model_name = 'subset'
 	harmony_model_name =  'subset'
-	n_notes = 300
-	key = 'D'
+	sequence_model_name = 'sequence_build'
+	n_sections = 50
+	key = 'C'
 	sequence_len = 24
-	song_name = 'test1.mid'
-	generate(duration_model_name, harmony_model_name, n_notes, key, sequence_len, song_name)
+	song_name = 'sequence_test5.mid'
+	n_mes = 2
+	generate(sequence_model_name, duration_model_name, harmony_model_name, n_sections, key, sequence_len, song_name, n_mes)
 
 
 

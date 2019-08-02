@@ -19,7 +19,7 @@ import glob
 import copy
 from numpy.random import choice
 from music21 import roman, stream, note
-from src.utils import get_project_root
+from djnn import ROOT_DIR
 
 ROOT_DIR = get_project_root()
 
@@ -124,9 +124,9 @@ if __name__ == '__main__':
 	sequence_len = 4
 	epochs = 500
 	midi_dir = 'test_midis'
-	model_name = 'sequence_build'
+	model_name = 'sequence_build2'
 	n_mes = 2
-	n_clusters = 20
+	n_clusters = 10
 	songs = get_all_songs(midi_dir)
 	note_inputs, model = train_sequences(songs, sequence_len, epochs, n_mes, n_clusters)
 	save_model(model, model_name)

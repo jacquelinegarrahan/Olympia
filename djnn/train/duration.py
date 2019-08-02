@@ -1,5 +1,5 @@
 import sys
-from data.song import Song
+from djnn.data import song
 from datetime import datetime
 import numpy
 import csv
@@ -19,29 +19,31 @@ import glob
 import copy
 from numpy.random import choice
 from music21 import roman, stream, note
-from src.utils import get_project_root
-
-ROOT_DIR = get_project_root()
-
-def get_all_songs(midi_dir):
-	songs = []
-	for file in glob.glob(ROOT_DIR + '/midis/' + midi_dir + "/*.mid"):
-		song = Song(file)
-		songs.append(song)
-	return songs
+from djnn import ROOT_DIR
 
 
-def get_map(songs, model_name):
-	durations = []
-	for song in songs:
-		prog = song.get_duration_progression()
-		for item in prog:
-			if item not in durations:
-				durations.append(item)
-	mapping =  dict((item, number) for number, item in enumerate(durations))
-	with open(ROOT_DIR + '/files/mappings/'+ model_name + '_durations.json', 'w') as f:
-		f.write(json.dumps(mapping))
-	return mapping
+
+class DurationModel():
+
+	def __init__(self, by_instrument=False):
+
+		pass
+	
+
+	def build_duration_map(songs, model_name):
+		durations = []
+		
+		for song in songs:
+			prog = song.get_duration_progression()
+			for item in prog:
+				if item not in durations:
+					durations.append(item)
+
+		mapping =  dict((item, dur) for dur, item in enumerate(durations))
+		with open(ROOT_DIR + '/djnn/files/mappings/'+ model_name + '_durations.json', 'w') as f:
+			f.write(json.dumps(mapping))
+
+		return mapping
 
 
 def prepare_durations(progression, mapping, sequence_len):
@@ -89,7 +91,6 @@ def train_duration(songs, mapping, sequence_len, epochs):
 	model = lstm(sequence_len, len(mapping))
 	for progression in progressions:
 		inputs, outputs = prepare_durations(progression, mapping, sequence_len)
-		n_train = int(0.9*len(inputs))
 		es = EarlyStopping(monitor='loss', mode='min', verbose=1,  min_delta=0, patience=100)
 
 		model.fit(inputs, outputs, epochs=epochs, batch_size=128, callbacks=[es])
@@ -125,8 +126,8 @@ def lstm(sequence_len, n_notes):
 
 
 def save_model(model, model_name):
-	model_file = ROOT_DIR + '/files/models/duration/model_' + model_name + '.json'
-	weight_file = ROOT_DIR + '/files/models/duration/weights_' + model_name + '.h5'
+	model_file = ROOT_DIR + '/djnn/files/models/duration/model_' + model_name + '.json'
+	weight_file = ROOT_DIR + '/djnn/files/models/duration/weights_' + model_name + '.h5'
 
 	# serialize model to JSON
 	model_json = model.to_json()
@@ -137,8 +138,8 @@ def save_model(model, model_name):
 
 
 if __name__ == '__main__':
-	sequence_len = 24
-	epochs = 500
+	sequence_len = 12
+	epochs = 50
 	midi_dir = 'test_midis'
 	model_name = 'duration2'
 	songs = get_all_songs(midi_dir)
