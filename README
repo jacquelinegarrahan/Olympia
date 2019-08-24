@@ -6,3 +6,9 @@ borrowed from https://github.com/Skuldur/Classical-Piano-Composer/blob/master/ls
 https://towardsdatascience.com/how-to-generate-music-using-a-lstm-neural-network-in-keras-68786834d4c5
 
 https://www.kaggle.com/wfaria/midi-music-data-extraction-using-music21
+
+
+TODO
+1.) ABABAB measure based model (select high entropy measures for repetitions)
+2.) Table for midi files
+3.) Constrain to measures
