@@ -1,4 +1,23 @@
+from pydantic import BaseModel
 from djnn.train import duration, harmony, sequence
+
+
+
+class ModelSettings(BaseModel):
+	# neural models
+	sequence_length: int = 20
+	epochs: int = 100
+
+class HarmonySettings(ModelSettings):
+	model_type: str = "harmony"
+
+class DurationSettings(ModelSettings):
+	model_type: str = "duration"
+
+class SequenceSettings(ModelSettings):
+	model_type: str = "sequence"
+	n_clusters: int = 15
+	n_measures: int = 50
 
 
 def train_all(midi_dir, model_name, sequence_len, epochs):
@@ -14,13 +33,8 @@ def train_all(midi_dir, model_name, sequence_len, epochs):
 
 
 if __name__ == '__main__':
-	sequence_len = 12
-	epochs = 50
 	midi_dir = 'small_test'
 	model_name = 'class_test'
-	n_measures = 50
-	n_clusters = 15
-	sequence_len = 20
 
 	song_objs = song.get_all_songs(midi_dir)
 	harmony_model = SequenceModel(song_objs, n_clusters, n_measures, sequence_len, midi_dir, model_name)

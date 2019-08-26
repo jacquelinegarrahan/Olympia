@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import numpy as np
 import glob
+import boto3
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import normalize
 
@@ -257,7 +258,6 @@ def simplify_roman_name(roman_numeral):
 	elif (roman_numeral.isDiminishedSeventh()): ret = ret + "o7"
 	return ret
 
-	
 
 
 def get_cluster_labels(matrix, n_clusters=20):

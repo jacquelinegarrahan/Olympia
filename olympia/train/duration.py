@@ -3,6 +3,7 @@ from datetime import datetime
 import numpy
 import csv
 import os
+from pydantic import BaseModel
 from sklearn.preprocessing import normalize
 from sklearn.preprocessing import OneHotEncoder
 from keras.utils import np_utils
@@ -20,6 +21,11 @@ from numpy.random import choice
 from music21 import roman, stream, note
 from djnn import ROOT_DIR
 from djnn.data import song
+
+
+class DurationSettings(BaseModel):
+	
+
 
 
 

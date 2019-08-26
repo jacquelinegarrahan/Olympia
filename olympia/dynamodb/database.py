@@ -1,5 +1,5 @@
 import boto3
-
+from olympia import CONFIGS
 
 class DBConnection():
 
@@ -11,15 +11,21 @@ class DBConnection():
     def __init__(self):
         #try to populate the midi table
         try:
-            midi_table = Table("midis")
+            self.midi_table = Table("midis")
         except Exception as e:
             print("Midi Table doesn't exist.")
 
         #try to populate the models table
         try:
-            model_table = Table("models")
+            self.model_table = Table("models")
         except Exception as e:
             print("Model Table doesn't exist.")
+
+        #try to populate the songs table
+        try:
+            self.model_table = Table("songs")
+        except Exception as e:
+            print("Song Table doesn't exist.")
 
     def create_midi_table(self):
         """
@@ -27,7 +33,7 @@ class DBConnection():
         Midis will be characterized by song names, artists, time signatures, and genre
         """
 
-        table = dynamodb.create_table(
+        table = self.dynamodb.create_table(
             TableName='midis',
             KeySchema=[
                 {
@@ -91,21 +97,24 @@ class DBConnection():
                 {
                     'AttributeName': 'time_signature',
                     'AttributeType': 'S'
+                },
+                {
+                    'AttributeName': 'genre',
+                    'AttributeType': 'S'
                 }
                 ],
             ProvisionedThroughput={
                 'ReadCapacityUnits': 5,
                 'WriteCapacityUnits': 5
             },
-            connection=db
         )
 
-     def create_models_table(self):
+    def create_models_table(self):
         """
         Create database for model builds
         """
 
-        table = dynamodb.create_table(
+        table = self.dynamodb.create_table(
             TableName='models',
             KeySchema=[
                 {
@@ -187,7 +196,6 @@ class DBConnection():
                 'ReadCapacityUnits': 5,
                 'WriteCapacityUnits': 5
             },
-            connection=db
         )
     
 
@@ -197,7 +205,7 @@ class DBConnection():
         For tracking generated songs
         """
 
-        table = dynamodb.create_table(
+        table = self.dynamodb.create_table(
             TableName='songs',
             KeySchema=[
                 {
@@ -256,25 +264,27 @@ class DBConnection():
                 },
                 {
                     'AttributeName': 'key',
-                    'KeyType': 'S'
+                    'AttributeType': 'S'
                 },
                 {
                     'AttributeName': 'time_signature',
-                    'KeyType': 'S'
+                    'AttributeType': 'S'
                 },
                 {
                     'AttributeName': 'quality_score',
-                    'KeyType': 'N'
+                    'AttributeType': 'N'
                 },
             ],
             ProvisionedThroughput={
                 'ReadCapacityUnits': 5,
                 'WriteCapacityUnits': 5
             },
-            connection=db
         )
 
 
 
 if __name__ == '__main__':
     db = DBConnection()
+    db.create_midi_table()
+    db.create_models_table()
+    db.create_song_table()

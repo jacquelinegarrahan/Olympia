@@ -6,9 +6,8 @@ verify_ssl = true
 [requires]
 python_version = "3.7"
 
-
 [dev-packages]
-black = "*"
+black = "==18.9b0"
 bpython = "*"
 pylint = "*"
 
@@ -18,3 +17,7 @@ tensorflow = "*"
 music21 = "*"
 numpy = "*"
 sklearn = "*"
+flask = "*"
+configparser = "*"
+boto3 = "*"
+pydantic = "*"
