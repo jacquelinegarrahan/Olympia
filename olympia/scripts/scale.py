@@ -1,5 +1,11 @@
 note = range(100)
 
+#added variables for all scales based
+#on starting note value,
+#got rid of duplicating numbers
+#and stopped it from going over 100
+
+
 #major scale
 def major_scale(key):
     major_key = []
@@ -21,7 +27,11 @@ def major_scale(key):
     octaves_sum = major_key + octave2 + octave3 + octave4 + octave5 + octave6 + octave7 + octave8
     from itertools import groupby
     all_octaves = [i[0] for i in groupby(octaves_sum)]
-
+    full_scale =[]
+    for noet in all_octaves:
+        if noet < 101:
+            full_scale.append(noet)
+    return full_scale
     return all_octaves
 
 
@@ -43,8 +53,6 @@ a_sharp_major = major_scale(10)
 b_flat_major = major_scale(10)
 b_major = major_scale(11)
 
-#the sharps and flats that are adjacent are
-#really just the same note that has two names
 
 
 #natural minor scale
@@ -68,7 +76,11 @@ def minor_scale(key):
     octaves_sum = minor_key + octave2 + octave3 + octave4 + octave5 + octave6 + octave7 + octave8
     from itertools import groupby
     all_octaves = [i[0] for i in groupby(octaves_sum)]
-    return all_octaves
+    full_scale =[]
+    for noet in all_octaves:
+        if noet < 101:
+            full_scale.append(noet)
+    return full_scale
 
 c_minor = minor_scale(0)
 c_sharp_minor = minor_scale(1)
