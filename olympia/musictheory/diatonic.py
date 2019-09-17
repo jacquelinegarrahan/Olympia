@@ -11,7 +11,7 @@ def major_diatonic_triads(key):
     major_diatonic.append([note[key + 7], (note[key + 7] + 4), (note[key + 7] + 7)])
     major_diatonic.append([note[key + 9], (note[key + 9] + 3), (note[key + 9] + 7)])
     major_diatonic.append([note[key + 11], (note[key + 11] + 3), (note[key + 11] + 6)])
-    major_diatonic.append([note[key + 12], (note[key + 12] + 3), (note[key + 12] + 7)])
+    major_diatonic.append([note[key + 12], (note[key + 12] + 4), (note[key + 12] + 7)])
     return major_diatonic
 
 c_maj_triads = major_diatonic_triads(0)
