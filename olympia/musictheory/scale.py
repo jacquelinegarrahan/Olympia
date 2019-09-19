@@ -1,10 +1,8 @@
+#removed extra return statement
+#from first function
+
+
 note = range(100)
-
-#added variables for all scales based
-#on starting note value,
-#got rid of duplicating numbers
-#and stopped it from going over 100
-
 
 #major scale
 def major_scale(key):
@@ -32,7 +30,6 @@ def major_scale(key):
         if noet < 101:
             full_scale.append(noet)
     return full_scale
-    return all_octaves
 
 
 c_major = major_scale(0)
