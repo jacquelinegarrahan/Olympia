@@ -1,0 +1,8 @@
+
+os: osx
+language: generic
+env: TOXENV=py37
+install:
+  - brew install portaudio
+  - pip install pipenv
+  - pipenv install

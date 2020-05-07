@@ -1,0 +1,10 @@
+__pycache__
+.vscode
+.pyc
+olympia/files/mappings/
+olympia/files/midis/
+olympia/files/models/
+olympia/files/songs/
+config.ini
+.DS_Store
+.env.local
