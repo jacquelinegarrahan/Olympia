@@ -89,17 +89,3 @@ class DurationModel:
     # DESCRIPTION: save model to db and s3
     def save_model(self):
         files.save_model(self.model, self.model_hash, self.model_settings, self.score)
-
-
-if __name__ == "__main__":
-    from olympia.train import ModelSettings
-
-    sequence_length = 6
-
-    model_settings = ModelSettings(
-        instrument="guitar", sequence_length=sequence_length, model_type="duration", epochs=500
-    )
-    songs = song.get_songs("guitar", time_signature="4/4", limit=100)
-    duration_model = DurationModel(songs, model_settings)
-    duration_model.train_duration()
-    duration_model.save_model()

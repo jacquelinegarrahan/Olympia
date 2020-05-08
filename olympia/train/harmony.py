@@ -82,16 +82,3 @@ class HarmonyModel:
     # DESCRIPTION: save model to db and s3
     def save_model(self):
         files.save_model(self.model, self.model_hash, self.model_settings, self.score)
-
-
-if __name__ == "__main__":
-    from olympia.train import ModelSettings
-
-    sequence_length = 8
-    model_settings = ModelSettings(
-        instrument="guitar", sequence_length=sequence_length, model_type="harmony", epochs=500
-    )
-    songs = song.get_songs("guitar", time_signature="4/4", limit=100)
-    harmony_model = HarmonyModel(songs, model_settings, "C")
-    harmony_model.train_harmony()
-    harmony_model.save_model()

@@ -62,17 +62,3 @@ class SequenceModel:
     # DESCRIPTION: save model to db and s3
     def save_model(self):
         files.save_model(self.model, self.model_hash, self.model_settings, self.score)
-
-
-if __name__ == "__main__":
-    from olympia.train import ModelSettings
-
-    sequence_length = 12
-
-    model_settings = ModelSettings(
-        instrument="guitar", sequence_length=sequence_length, model_type="sequence", epochs=500
-    )
-    songs = song.get_songs("guitar", time_signature="4/4", limit=100)
-    sequence_model = SequenceModel(songs, model_settings)
-    sequence_model.train_sequences()
-    sequence_model.save_model()
