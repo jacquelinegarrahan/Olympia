@@ -25,7 +25,3 @@ def execute_query(query, params):
     statement = text(query)
     results = database.connection.execute(statement, params)
     return results
-
-
-if __name__ == "__main__":
-    execute_query("SELECT * FROM midis WHERE midi_id=:id", {"id": 2})

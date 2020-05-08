@@ -13,6 +13,7 @@ allow_prereleases = true
 black="*"
 bpython = "*"
 pylint = "*"
+vulture = "*"
 
 [packages]
 click = "*"
@@ -38,3 +39,5 @@ pyopengl = "*"
 wave = "*"
 scipy = "*"
 wavio = "*"
+qtpy = "*"
+pytest = "*"
