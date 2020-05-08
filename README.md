@@ -11,5 +11,8 @@ In order to maximize the diversity of the models, the loss function was swapped 
 
 # SETUP
 To use visualization tools, need to install pyaudio:
- ` brew install portaudio`
+`brew install portaudio`
 `sudo apt-get install python3-pyaudio`
+
+This project uses pipenv to create the virtual environment for the models:
+`pipenv install `
