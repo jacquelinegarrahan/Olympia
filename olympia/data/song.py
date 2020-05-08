@@ -264,16 +264,3 @@ def get_songs(instrument, time_signature=None, key=None, limit=None):
             logger.debug("Error on %s", midi_id)
 
     return songs
-
-    # for file_item in glob.glob(ROOT_DIR + "/olympia/files/midis/" + midi_dir + "/*.mid"):
-    #    song_obj = Song(file_item)
-    #    songs.append(song_obj)
-    # return songs
-
-
-if __name__ == "__main__":
-    print(get_songs("piano", time_signature="4/4", limit=5))
-    # song_obj.load_midi()
-    # print(song.parts)
-    # song.get_self_similarity()
-    # timeSignature.beatCount, timeSignature.denominator
