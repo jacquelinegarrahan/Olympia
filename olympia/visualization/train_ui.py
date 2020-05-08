@@ -7,7 +7,7 @@ import json
 import argparse
 import requests
 from threading import Thread
-from PySide2 import QtCore, QtWidgets, QtGui, Qt
+from qtpy import QtCore, QtWidgets, QtGui
 
 from olympia import db
 
@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-BUTTON_STYLE = "font: 15pt Helvetica; color: black; border: 1px solid; border-color: black; border-radius: 5px;"
+BUTTON_STYLE = (
+    "font: 15pt Helvetica; color: black; border: 1px solid; border-color: black; border-radius: 5px; padding: 5px;"
+)
 
 
 class ChecklistDialog(QtWidgets.QWidget):
@@ -55,6 +57,14 @@ class ChecklistDialog(QtWidgets.QWidget):
         self.unselect_button = QtWidgets.QPushButton("Unselect All")
         self.unselect_button.setStyleSheet(BUTTON_STYLE)
 
+        # set up logo and insert
+        self.logo_pixmap = QtGui.QPixmap(os.getcwd() + "/olympia/files/olympia.png")
+        self.logo_pixmap = self.logo_pixmap.scaledToWidth(150, mode=QtCore.Qt.SmoothTransformation)
+        self.logo_image = QtWidgets.QLabel()
+        self.logo_image.setPixmap(self.logo_pixmap)
+        self.logo_image.setStyleSheet("margin: 25px;")
+        self.logo_image.setAlignment(QtCore.Qt.AlignCenter)
+
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(self.ok_button)
         hbox.addWidget(self.cancel_button)
@@ -62,6 +72,7 @@ class ChecklistDialog(QtWidgets.QWidget):
         hbox.addWidget(self.unselect_button)
 
         vbox = QtWidgets.QVBoxLayout(self)
+        vbox.addWidget(self.logo_image)
         vbox.addWidget(self.listView)
         vbox.addLayout(hbox)
 
@@ -108,11 +119,9 @@ class MainWindow(QtWidgets.QWidget):
         # self.form.setStyleSheet(
         #    "font: 15pt Helvetica; color: rgb(0,0,0); border-color: black; border-radius: 2px;  border-radius: 10px;"
         # )
-
-        # set up username entry field
-        self.welcome_text = QtWidgets.QLabel("OLYMPIA")
-        self.welcome_text.setAlignment(QtCore.Qt.AlignCenter)
-        self.welcome_text.setStyleSheet("font: 30pt Helvetica; color: rgb(51,51,204);")
+        # self.welcome_text = QtWidgets.QLabel("OLYMPIA")
+        # self.welcome_text.setAlignment(QtCore.Qt.AlignCenter)
+        # self.welcome_text.setStyleSheet("font: 30pt Helvetica; color: rgb(51,51,204);")
 
         # submit username on enter key press
         # self.username_input.returnPressed.connect(self.button.click)
@@ -121,7 +130,7 @@ class MainWindow(QtWidgets.QWidget):
         hbox = QtWidgets.QHBoxLayout()
         vbox = QtWidgets.QVBoxLayout()
         # vbox.addWidget(self.logo_image)
-        vbox.addWidget(self.welcome_text)
+        # vbox.addWidget(self.welcome_text)
         vbox.addLayout(hbox)
         vbox.addWidget(self.form)
         vbox.setAlignment(QtCore.Qt.AlignCenter)

@@ -10,7 +10,8 @@ If you don't have pyOpenGL or opensimplex, then:
 import numpy as np
 from opensimplex import OpenSimplex
 import pyqtgraph.opengl as gl
-from PySide2 import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtWidgets, QtGui
+from PIL import Image
 import scipy.io.wavfile as wavfile
 import struct
 import pyaudio
@@ -30,8 +31,9 @@ class Terrain(object):
         self.window = gl.GLViewWidget()
         self.window.setWindowTitle("Terrain")
         self.window.setGeometry(0, 110, 1920, 1080)
-        self.window.setCameraPosition(distance=30, elevation=12)
+        self.window.setCameraPosition(distance=50, elevation=12)
         self.window.show()
+        self.images = []
 
         # constants and arrays
         self.nsteps = 1.3
@@ -117,8 +119,8 @@ class Terrain(object):
                 faces.append(
                     [xid + yoff, xid + yoff + 1, xid + yoff + self.nfaces + 1,]
                 )
-                colors.append([xid / self.nfaces, 1 - xid / self.nfaces, yid / self.nfaces, 0.5])
-                colors.append([xid / self.nfaces, 1 - xid / self.nfaces, yid / self.nfaces, 0.5])
+                colors.append([xid / self.nfaces, xid / self.nfaces, xid / self.nfaces, 0.8])
+                colors.append([xid / self.nfaces, xid / self.nfaces, xid / self.nfaces, 0.8])
 
         faces = np.array(faces, dtype=np.uint32)
         colors = np.array(colors, dtype=np.float32)
@@ -144,7 +146,7 @@ class Terrain(object):
 
     def start(self):
         """
-        get the graphics window open and setup
+       get the graphics window open and setup
         """
         if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
             QtGui.QApplication.instance().exec_()

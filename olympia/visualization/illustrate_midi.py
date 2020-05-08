@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 import time
-from PySide2 import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtWidgets, QtGui
 
 from olympia.data import song
 from olympia import ROOT_DIR
@@ -85,4 +85,3 @@ if __name__ == "__main__":
     window.generate()
     window.show()
     sys.exit(app.exec_())
-
