@@ -141,7 +141,7 @@ class Song:
         self.time_signature = "{}/{}".format(time_signature.beatCount, time_signature.denominator)
         return self.time_signature
 
-    def get_cluster_sequence(self, n_mes: int = 1, n_clusters: int = 20):
+    def get_cluster_sequence(self, n_mes: int = 1, n_clusters: int = 20) -> List[int]:
         representations = []
         measures = self.midi.makeMeasures()
         measures = measures.getElementsByClass("Measure")
@@ -176,8 +176,6 @@ class Song:
                     representations.append([np.mean(measure_offset_rep), np.mean(measure_note_rep)])
 
         cluster_labels = get_cluster_labels(np.array(representations), n_clusters=n_clusters)
-
-        breakpoint()
 
         return cluster_labels
 
