@@ -65,7 +65,7 @@ class HarmonyModel:
         self.mapping = mapping
 
         # save mapping
-        files.save_mapping(mapping, "harmony", self.model_hash)
+        files.save_mapping(mapping, self.model_hash)
 
     # METHOD: prepare_sequences
     # DESCRIPTION: prepare sequences for the lstm model

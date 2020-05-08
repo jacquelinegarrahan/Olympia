@@ -11,9 +11,7 @@ import numpy as np
 from opensimplex import OpenSimplex
 import pyqtgraph.opengl as gl
 from qtpy import QtCore, QtWidgets, QtGui
-from PIL import Image
 import scipy.io.wavfile as wavfile
-import struct
 import pyaudio
 import wave
 import sys

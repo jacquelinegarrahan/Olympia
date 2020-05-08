@@ -1,8 +1,5 @@
-from music21 import converter, corpus, instrument, midi, note, chord, pitch, roman, stream
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
+from music21 import instrument, midi, note, chord, pitch, roman, stream
 import numpy as np
-import glob
 import boto3
 import logging
 from sklearn.cluster import KMeans
@@ -20,11 +17,11 @@ class Part:
 
         self.instrument = part_obj.partName
         self.notes = part_obj.notes
-        self.notes_and_rests = part_obj.notesAndRests
+        # self.notes_and_rests = part_obj.notesAndRests
         self.pitch_differences = []
         self.harmony = None
         self.roman_numerals = None
-        self.pitche_vector = None
+        self.pitch_vector = None
         self.duration_progression = None
         self.get_pitch_differences()
         self.chord_progression = part_obj.chordify()
@@ -141,12 +138,6 @@ class Song:
         self.time_signature = "{}/{}".format(time_signature.beatCount, time_signature.denominator)
         return self.time_signature
 
-    def plot_offset_vs_pitch(self):
-        self.midi.plot("scatter", "offset", "pitchClass")
-
-    def plot_pitch_class(self):
-        self.midi.plot("histogram", "pitchClass", "count")
-
     def get_cluster_sequence(self, n_mes=1, n_clusters=20):
         representations = []
         measures = self.midi.makeMeasures()
@@ -168,7 +159,6 @@ class Song:
             if i in measureDict:
                 measure_offset_rep = []
                 measure_note_rep = []
-                elNotes = []
 
                 for mnote in measureDict[i]:
                     if mnote.isChord:

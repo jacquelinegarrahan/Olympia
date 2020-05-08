@@ -23,8 +23,6 @@ class SequenceModel:
         self.inputs = []
         self.outputs = []
         self.mapping = None
-        self.n_training_notes = None
-        self.output_diversity = None
         self.n_clusters = model_settings.n_clusters
         self.n_measures = model_settings.n_measures
         self.sequence_length = model_settings.sequence_length

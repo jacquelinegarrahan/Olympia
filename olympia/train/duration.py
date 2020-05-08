@@ -22,8 +22,6 @@ class DurationModel:
         self.inputs = []
         self.outputs = []
         self.mapping = None
-        self.n_training_notes = None
-        self.output_diversity = None
         self.sequence_length = model_settings.sequence_length
         self.epochs = model_settings.epochs
         self.learning_rate = model_settings.learning_rate
@@ -72,7 +70,7 @@ class DurationModel:
         self.mapping = mapping
 
         # save mapping
-        files.save_mapping(mapping, "duration", self.model_hash)
+        files.save_mapping(mapping, self.model_hash)
 
     # METHOD: prepare_sequences
     # DESCRIPTION: prepare sequences for the lstm model

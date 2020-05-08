@@ -228,4 +228,3 @@ def check_output_diversity(builder):
 if __name__ == "__main__":
     mapping = {"A": 1, "B": 2, "C": 3}
     print(generate_random_input(12, mapping, n_clusters=None, n_samples=200))
-

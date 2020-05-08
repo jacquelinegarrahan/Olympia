@@ -147,7 +147,3 @@ def scrape_freemidi_midis():
                     for song_item in songs:
 
                         process_midi(song_item)
-
-
-if __name__ == "__main__":
-    print(check_url_exists("https://www.midiworld.com/download/1"))

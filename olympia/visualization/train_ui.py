@@ -6,7 +6,6 @@ import time
 import json
 import argparse
 import requests
-from threading import Thread
 from qtpy import QtCore, QtWidgets, QtGui
 
 from olympia import db

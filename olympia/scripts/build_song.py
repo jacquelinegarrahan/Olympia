@@ -2,7 +2,6 @@ import logging
 from music21 import roman, stream, note, chord, instrument, duration
 import json
 import numpy as np
-import copy
 from olympia import files, utils
 from olympia.data.song import Song
 from olympia.train import ModelSettings
@@ -34,7 +33,6 @@ class Model:
     def __init__(self, model_hash, sequence=False):
         self.model = files.get_model(model_hash)
         self.settings = ModelSettings(**utils.load_model_settings(model_hash))
-        self.output = None
         self.mapping = None
 
         self.sequence_length = self.settings.sequence_length
@@ -219,4 +217,3 @@ if __name__ == "__main__":
 
     builder = SongBuilder(instruments, sequence_hash, harmony_maps, duration_maps, key, n_sections, n_mes)
     builder.build_song()
-

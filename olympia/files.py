@@ -15,7 +15,7 @@ def upload_file(file_name, save_file):
     s3_client = boto3.client("s3")
 
     try:
-        response = s3_client.upload_file(file_name, "olympia-files", save_file)
+        s3_client.upload_file(file_name, "olympia-files", save_file)
 
     except ClientError as e:
         logging.error(e)
@@ -31,7 +31,7 @@ def download_file(file_name, save_path):
     s3_client = boto3.client("s3")
 
     try:
-        response = s3_client.download_file("olympia-files", file_name, save_path)
+        s3_client.download_file("olympia-files", file_name, save_path)
 
     except ClientError as e:
         logging.error(e)
@@ -70,7 +70,7 @@ def save_model(model, model_hash, model_settings, score, persist_local=False):
 
 # METHOD: save_mapping
 # DESCRIPTION: save mapping to s3
-def save_mapping(mapping, map_type, model_hash, persist_local=False):
+def save_mapping(mapping, model_hash, persist_local=False):
 
     # save locally
     local_mapping = f"{ROOT_DIR}/olympia/files/mappings/mapping_{model_hash}.json"
@@ -130,15 +130,12 @@ def save_song(
 ):
 
     # save local song
-
     local_song = f"{ROOT_DIR}/olympia/files/songs/{song_hash}.mid"
 
     # upload
-    upload_file(local_mapping, f"songs/{song_hash}.mid")
+    upload_file(local_song, f"songs/{song_hash}.mid")
 
-    # insert into database
-
-    # save song into songs table
+    # save song into songs table in db
     db.insert(
         "songs",
         {

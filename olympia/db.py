@@ -28,6 +28,4 @@ def execute_query(query, params):
 
 
 if __name__ == "__main__":
-    test_values = {"url": "test", "song_title": "test"}
-    db_connect = DB()
     execute_query("SELECT * FROM midis WHERE midi_id=:id", {"id": 2})

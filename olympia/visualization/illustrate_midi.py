@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-import time
 from qtpy import QtCore, QtWidgets, QtGui
 
 from olympia.data import song

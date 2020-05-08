@@ -110,20 +110,34 @@ class TheoryLoss(torch.nn.Module):
 
             if i >= 3:
                 prev_section = list(y[i - 2 : i])
-                mid_section = list(y[i - 2 : i + 1])
-                next_section = list(y[i : i + 2])
+                # mid_section = list(y[i - 2 : i + 1])
+                # next_section = list(y[i : i + 2])
                 previous_count = prev_section.count(note)
                 if previous_count > 2:
                     loss += 100
 
                 # check major
-                for triad in major_diatonic_triads:
+                for triad in major_scale:
                     if note in triad:
                         overlap = set(triad).intersection(prev_section)
                         if len(overlap) > 1:
                             loss -= 100
 
                 # check minor
+                for triad in minor_scale:
+                    if note in triad:
+                        overlap = set(triad).intersection(prev_section)
+                        if len(overlap) > 1:
+                            loss -= 100
+
+                # check major traid
+                for triad in major_diatonic_triads:
+                    if note in triad:
+                        overlap = set(triad).intersection(prev_section)
+                        if len(overlap) > 1:
+                            loss -= 100
+
+                # check minor triad
                 for triad in minor_diatonic_triads:
                     if note in triad:
                         overlap = set(triad).intersection(prev_section)
