@@ -1,4 +1,6 @@
-from music21 import instrument, midi, note, chord, pitch, roman, stream
+from music21 import instrument, midi, chord, pitch, roman, stream
+from music21.stream import Part as StreamPart
+from typing import List
 import numpy as np
 import boto3
 import logging
@@ -13,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 
 
 class Part:
-    def __init__(self, part_obj):
+    def __init__(self, part_obj: StreamPart):
 
         self.instrument = part_obj.partName
         self.notes = part_obj.notes
@@ -76,7 +78,7 @@ class Part:
         self.roman_numerals = ret
         return ret
 
-    def get_duration_progression(self, prune_complex=True):
+    def get_duration_progression(self, prune_complex: bool = True) -> List[str]:
         durations = []
 
         for nt in self.notes:
@@ -84,11 +86,12 @@ class Part:
                 durations.append(nt.duration.type)
 
         self.duration_progression = durations
+
         return durations
 
 
 class Song:
-    def __init__(self, raw_path, title=None, artist=None):
+    def __init__(self, raw_path: str, title: str = None, artist: str = None):
         self.title = title
         self.artist = artist
         self.raw_path = raw_path
@@ -99,7 +102,7 @@ class Song:
         self.instruments = []
         self.load_midi()
 
-    def load_midi(self, remove_drums=True):
+    def load_midi(self, remove_drums: bool = True) -> None:
         mf = midi.MidiFile()
         mf.open(self.raw_path)
         mf.read()
@@ -113,7 +116,7 @@ class Song:
         self.get_expected_key()
         self.get_time_signatures()
 
-    def get_parts(self):
+    def get_parts(self) -> None:
         part_stream = self.midi.parts.stream()
         for p in part_stream:
             part_obj = Part(p)
@@ -124,7 +127,7 @@ class Song:
     def get_stream(self):
         return self.midi.parts.stream()
 
-    def get_part_by_instrument(self, instrument):
+    def get_part_by_instrument(self, instrument: str) -> Part:
         for p in self.parts:
             if p.instrument and instrument in p.instrument.lower():
                 return p
@@ -138,7 +141,7 @@ class Song:
         self.time_signature = "{}/{}".format(time_signature.beatCount, time_signature.denominator)
         return self.time_signature
 
-    def get_cluster_sequence(self, n_mes=1, n_clusters=20):
+    def get_cluster_sequence(self, n_mes: int = 1, n_clusters: int = 20):
         representations = []
         measures = self.midi.makeMeasures()
         measures = measures.getElementsByClass("Measure")
@@ -172,16 +175,20 @@ class Song:
                 if len(measure_note_rep) > 0 and len(measure_note_rep) > 0:
                     representations.append([np.mean(measure_offset_rep), np.mean(measure_note_rep)])
 
-        return get_cluster_labels(np.array(representations), n_clusters=n_clusters)
+        cluster_labels = get_cluster_labels(np.array(representations), n_clusters=n_clusters)
+
+        breakpoint()
+
+        return cluster_labels
 
 
 def note_count(measure):
     count_dict = {}
     base_note = None
-    for chord in measure.recurse().getElementsByClass("Chord"):
+    for m_chord in measure.recurse().getElementsByClass("Chord"):
         # All notes have the same length of its chord parent.
-        note_length = chord.quarterLength
-        for note in chord.pitches:
+        note_length = m_chord.quarterLength
+        for note in m_chord.pitches:
             # If note is "C5", note.name is "C". We use "C5"
             # style to be able to detect more precise inversions.
             note_name = str(note)
@@ -218,7 +225,7 @@ def simplify_roman_name(roman_numeral):
     return ret
 
 
-def get_cluster_labels(matrix, n_clusters=20):
+def get_cluster_labels(matrix: np.array, n_clusters: int = 20) -> List[int]:
     if matrix.shape[0] > n_clusters:
         normed_matrix = normalize(matrix, axis=1, norm="l1")
         kclusterer = KMeans(n_clusters=n_clusters).fit(normed_matrix)
@@ -226,15 +233,15 @@ def get_cluster_labels(matrix, n_clusters=20):
         labels = kclusterer.labels_
         return labels
     else:
-        return False
+        return []
 
 
-def get_songs(instrument, time_signature=None, key=None, limit=None):
+def get_songs(instrument, time_signature: str = None, key: str = None, limit: int = None) -> List[Song]:
     songs = []
 
     query = """
     SELECT midi_id FROM midis
-    WHERE instruments LIKE :instrument 
+    WHERE instruments LIKE :instrument
     """
     params = {"instrument": f"%{instrument}%"}
 
