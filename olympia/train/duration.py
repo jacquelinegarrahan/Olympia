@@ -1,8 +1,11 @@
 import logging
+from typing import List
+from pydantic import BaseModel
 from olympia.models import lstm
-from olympia import files, utils
 from olympia.data import song
+from olympia import files, utils
 from olympia import ROOT_DIR
+from olympia.train import ModelSettings
 
 
 logger = logging.getLogger("olympia")
@@ -14,23 +17,15 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # models on the progressions.
 # Currently uses an LSTM model for training
 class DurationModel:
-    def __init__(self, song_objs, model_settings):
-        self.model_settings = model_settings
+    def __init__(
+        self, song_objs: List[song.Song], model_settings: ModelSettings
+    ) -> None:
+        self.settings = model_settings
         self.model_hash = utils.get_model_hash(model_settings)
         self.songs = song_objs
-        self.durations = []
-        self.inputs = []
-        self.outputs = []
-        self.mapping = None
-        self.sequence_length = model_settings.sequence_length
-        self.epochs = model_settings.epochs
-        self.learning_rate = model_settings.learning_rate
-        self.instrument = model_settings.instrument
-        self.hidden_layer = model_settings.hidden_layer
-        self.create_date = model_settings.create_date
-        self.settings = model_settings.dict()
-        self.sequence_length = model_settings.sequence_length
+        self.mapping = {}
         self.n_clusters = None
+        self.durations = []
 
         # prepare model for build
         self.get_all_durations()
@@ -39,7 +34,7 @@ class DurationModel:
 
     # METHOD: get_all_durations
     # DESCRIPTION: pull durations for each song used in model
-    def get_all_durations(self):
+    def get_all_durations(self) -> None:
         # filter durations by instrument
 
         if not self.instrument:
@@ -58,7 +53,7 @@ class DurationModel:
 
     # METHOD: build_duration_map
     # DESCRIPTION: build a mapping of music21 midi duration to an integer
-    def build_duration_map(self):
+    def build_duration_map(self) -> None:
         unique_durations = []
 
         for progression in self.durations:
@@ -74,18 +69,21 @@ class DurationModel:
 
     # METHOD: prepare_sequences
     # DESCRIPTION: prepare sequences for the lstm model
-    def prepare_input(self):
+    def prepare_input(self) -> None:
         self.inputs, self.outputs = lstm.build_lstm_input_output(
-            self.sequence_length, self.mapping, self.durations, min_distinct_values=3
+            self.settings.sequence_length,
+            self.mapping,
+            self.durations,
+            min_distinct_values=3,
         )
 
     # METHOD: train_duration
     # DESCRIPTION: kick off duration training and return the trained model
-    def train_duration(self):
+    def train_duration(self) -> None:
         self.model = lstm.train_lstm(self)
         self.score = lstm.check_output_diversity(self)
 
     # METHOD: save_model
     # DESCRIPTION: save model to db and s3
-    def save_model(self):
-        files.save_model(self.model, self.model_hash, self.model_settings, self.score)
+    def save_model(self) -> None:
+        files.save_model(self.model, self.model_hash, self.settings.dict(), self.score)

@@ -1,7 +1,9 @@
 import logging
+from typing import List
 from olympia import files, utils
 from olympia.data import song
 from olympia.models import lstm
+from olympia.train import ModelSettings
 from olympia import ROOT_DIR
 
 logger = logging.getLogger("olympia")
@@ -12,8 +14,10 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # models on the progressions.
 # Currently uses an LSTM model for training
 class HarmonyModel:
-    def __init__(self, song_objs, model_settings, key):
-        self.model_settings = model_settings
+    def __init__(
+        self, song_objs: List[song.Song], model_settings: ModelSettings
+    ) -> None:
+        self.settings = ModelSettings(model_settings)
         self.model_hash = utils.get_model_hash(model_settings)
         self.songs = song_objs
         self.harmonies = []
@@ -21,13 +25,6 @@ class HarmonyModel:
         self.outputs = []
         self.mapping = None
         self.model = None
-        self.sequence_length = model_settings.sequence_length
-        self.hidden_layer = model_settings.hidden_layer
-        self.instrument = model_settings.instrument
-        self.learning_rate = model_settings.learning_rate
-        self.epochs = model_settings.epochs
-        self.n_clusters = None
-        self.key = key
 
         # prepare model for training
         self.get_all_harmonies(instrument=model_settings.instrument)
@@ -70,7 +67,9 @@ class HarmonyModel:
     # METHOD: prepare_sequences
     # DESCRIPTION: prepare sequences for the lstm model
     def prepare_input(self):
-        self.inputs, self.outputs = lstm.build_lstm_input_output(self.sequence_length, self.mapping, self.harmonies)
+        self.inputs, self.outputs = lstm.build_lstm_input_output(
+            self.settings.sequence_length, self.mapping, self.harmonies
+        )
 
     # METHOD: train_harmony
     # DESCRIPTION: kick off harmony training and return the trained model
@@ -81,4 +80,4 @@ class HarmonyModel:
     # METHOD: save_model
     # DESCRIPTION: save model to db and s3
     def save_model(self):
-        files.save_model(self.model, self.model_hash, self.model_settings, self.score)
+        files.save_model(self.model, self.model_hash, self.settings.dict(), self.score)
